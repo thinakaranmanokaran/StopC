@@ -1,0 +1,37 @@
+{
+  "name": "stopc",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Copy Once. Trust Forever. — a clipboard confidence app.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.13.0",
+    "@emotion/styled": "^11.13.0",
+    "@mui/material": "^7.0.0",
+    "@mui/icons-material": "^7.0.0",
+    "@tauri-apps/api": "^2.1.1",
+    "@tauri-apps/plugin-clipboard-manager": "^2.1.0",
+    "@tauri-apps/plugin-notification": "^2.1.0",
+    "@tauri-apps/plugin-autostart": "^2.1.0",
+    "@tauri-apps/plugin-store": "^2.1.0",
+    "framer-motion": "^11.11.9",
+    "lucide-react": "^0.451.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.9"
+  }
+}

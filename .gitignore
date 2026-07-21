@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.DS_Store
+
+# Rust
+src-tauri/target/
+
+# Tauri generated schemas
+src-tauri/gen/
+
+# Env / local
+.env
+.env.local

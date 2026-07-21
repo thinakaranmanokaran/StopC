@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StopC Notification</title>
+    <style>
+      /* Transparent shell so the frameless notification window shows only the toast */
+      html, body, #notif-root {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="notif-root"></div>
+    <script type="module" src="/src/notification-main.tsx"></script>
+  </body>
+</html>

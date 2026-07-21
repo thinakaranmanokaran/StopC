@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capabilities for StopC's main and notification windows",
+  "windows": ["main", "notification"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-position",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:event:default",
+    "clipboard-manager:default",
+    "notification:default",
+    "autostart:default",
+    "store:default"
+  ]
+}
