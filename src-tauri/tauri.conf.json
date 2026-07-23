@@ -58,10 +58,5 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
-  },
-  "plugins": {
-    "autostart": {
-      "macosLauncher": "LaunchAgent"
-    }
   }
 }

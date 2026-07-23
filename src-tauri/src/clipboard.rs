@@ -65,10 +65,24 @@ pub fn spawn_watcher(app: AppHandle, state: std::sync::Arc<AppState>) {
 
             if let Some(payload) = check_clipboard(&mut clipboard, &state) {
                 let is_dup = payload.is_duplicate;
+                let kind = payload.kind.clone();
                 if let Err(e) = app.emit("clipboard://changed", payload) {
                     eprintln!("[stopc] failed to emit clipboard event: {e}");
                 }
                 if !is_dup {
+                    let should_notify = {
+                        let settings = state.settings.lock().unwrap();
+                        match kind {
+                            ClipboardKind::Text | ClipboardKind::RichText | ClipboardKind::Html => {
+                                settings.notify_on_text
+                            }
+                            ClipboardKind::Image => settings.notify_on_image,
+                            ClipboardKind::File | ClipboardKind::Files | ClipboardKind::Folder => true,
+                        }
+                    };
+                    if should_notify {
+                        crate::notification::show_notification(&app, &state);
+                    }
                     state.reset_funny_counter();
                     state
                         .last_change_at

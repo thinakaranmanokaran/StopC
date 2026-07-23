@@ -6,12 +6,43 @@ A clipboard confidence app — not a clipboard manager. StopC watches your
 clipboard and gives you an instant, delightful confirmation the moment a
 copy lands, so you stop double- and triple-pressing Ctrl+C out of doubt.
 
-> **Status: core skeleton.** This is the first build pass — clipboard
-> detection, the notification pipeline, and Funny Mode's detection logic
-> are wired end-to-end. Settings/Stats/Achievements pages, the full
-> 100+ message library, mascot art, sounds, and clipboard history are
-> **not yet built** (see [Roadmap](#roadmap)). This README is honest
-> about that so nobody is surprised.
+> **Status: Settings + Developer pages added, notification bug fixed.**
+> Clipboard detection, the notification pipeline (now actually visible —
+> see Changelog), Funny Mode's detection logic, and a real Settings page
+> are wired end-to-end. Stats/Achievements pages, the full 100+ message
+> library, mascot art, sounds, clipboard history, and file/folder
+> detection are **not yet built** (see [Roadmap](#roadmap)).
+
+## Changelog
+
+- **Fixed:** the notification toast window was created but never shown —
+  `clipboard.rs` emitted events correctly and the frontend updated
+  state, but nothing ever called `window.show()` on the notification
+  window, so it silently never appeared. `notification.rs` now has a
+  `show_notification()` that positions, shows, and auto-hides the
+  window on every real (non-duplicate) clipboard change.
+- **Fixed:** an invalid `"plugins": { "autostart": {...} } }` block in
+  `tauri.conf.json` crashed the app on launch
+  (`PluginInitialization("autostart", ...)`). Autostart's
+  `macosLauncher` config only belongs in `main.rs`'s
+  `tauri_plugin_autostart::init(...)` call — removed the duplicate.
+- **Added:** Settings page (`src/pages/SettingsPage.tsx`) with
+  per-type notification toggles (text / image), theme/animation/
+  position pickers, duration/opacity/corner-radius sliders, Funny Mode
+  + mascot toggles, sound settings, and auto-start — all synced to the
+  Rust `Settings` struct via `get_settings`/`save_settings`/
+  `reset_settings`.
+- **Added:** `notifyOnText` / `notifyOnImage` settings so each content
+  type's toast can be silenced independently (`state.rs`,
+  `clipboard.rs`).
+- **Added:** Developer/About page (`src/pages/DeveloperPage.tsx`)
+  crediting the app's creator.
+- **Added:** left-nav app shell (`src/App.tsx`) with Dashboard /
+  Settings / Developer pages; tray menu's Settings and About items now
+  actually navigate to those pages instead of just focusing the window.
+- **Changed:** `Settings` now deserializes with `#[serde(default)]` at
+  the container level, so future new fields won't break loading an
+  older saved `settings.json`.
 
 ---
 
@@ -53,9 +84,10 @@ copy lands, so you stop double- and triple-pressing Ctrl+C out of doubt.
   animation, so that's what's implemented first. The
   `tauri-plugin-notification` dependency is already included and wired
   for a "use native notifications" toggle later.
-- **Settings / Statistics / Achievements / Clipboard History pages,**
-  sounds, mascot artwork (currently emoji placeholders), the full
-  100+ funny-message library, and light/custom theme editor.
+- **Statistics / Achievements / Clipboard History pages,** sound
+  playback (the picker exists in Settings, but nothing plays yet),
+  mascot artwork (currently emoji placeholders), the full 100+
+  funny-message library, and a custom theme editor.
 - **`icon.icns`** (macOS) isn't committed as a binary — generate it
   (along with a full re-check of all icon sizes) by running the Tauri
   CLI's icon generator against the included master image, see Setup.

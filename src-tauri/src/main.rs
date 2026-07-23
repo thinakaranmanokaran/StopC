@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{Manager, WindowEvent};
+use tauri::{Emitter, Manager, WindowEvent};
 
 use state::AppState;
 
@@ -56,19 +56,23 @@ fn main() {
                     let Some(main) = app.get_webview_window("main") else {
                         return;
                     };
+                    let _ = main.show();
+                    let _ = main.set_focus();
                     match event.id.as_ref() {
-                        "open" => {
-                            let _ = main.show();
-                            let _ = main.set_focus();
-                        }
                         "quit" => app.exit(0),
-                        // "pause", "funny", "stats", "settings", "about" route through
-                        // the same dashboard window with a query param / IPC event —
-                        // left as a follow-up once the Settings/Stats pages exist.
-                        _ => {
-                            let _ = main.show();
-                            let _ = main.set_focus();
+                        "settings" => {
+                            let _ = app.emit("tray://navigate", "settings");
                         }
+                        "about" => {
+                            let _ = app.emit("tray://navigate", "developer");
+                        }
+                        "open" => {
+                            let _ = app.emit("tray://navigate", "dashboard");
+                        }
+                        // "pause", "funny", "stats" still just focus the window for
+                        // now — Pause/Funny toggles and a dedicated Stats page are
+                        // tracked as follow-ups (see PLAN.md).
+                        _ => {}
                     }
                 })
                 .build(app)?;

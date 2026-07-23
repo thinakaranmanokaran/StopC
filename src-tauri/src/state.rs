@@ -35,7 +35,7 @@ impl AppState {
 /// Mirrors `StopCSettings` on the frontend (src/store/settingsStore.ts).
 /// Persisted to disk via tauri-plugin-store at settings.json.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub theme: String,
     pub animation: String,
@@ -53,8 +53,16 @@ pub struct Settings {
     /// How often (ms) the clipboard is polled. See clipboard.rs for why
     /// this is polling rather than a true push-based OS event.
     pub poll_interval_ms: u64,
+    /// Show a toast when a text/rich-text/HTML copy is detected.
+    pub notify_on_text: bool,
+    /// Show a toast when an image copy is detected.
+    pub notify_on_image: bool,
 }
 
+// `#[serde(default)]` on the struct above means any field missing from a
+// saved/older settings.json (e.g. after adding notify_on_text/image) is
+// silently filled from Default::default() below, instead of failing the
+// whole deserialization. Keep this in sync with settingsStore.ts.
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -71,6 +79,8 @@ impl Default for Settings {
             auto_start: true,
             funny_mode_threshold: 2,
             poll_interval_ms: 300,
+            notify_on_text: true,
+            notify_on_image: true,
         }
     }
 }

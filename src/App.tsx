@@ -1,74 +1,79 @@
-import { useState } from "react";
-import { Box, Container, Stack, Typography, Chip, Paper } from "@mui/material";
-import { ClipboardCheck } from "lucide-react";
-import { useClipboardWatcher } from "@/hooks/useClipboardWatcher";
-import { useClipboardStore } from "@/store/clipboardStore";
-import type { FunnyModeEvent } from "@/types/clipboard";
+import { useEffect, useState } from "react";
+import { Box, Drawer, List, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, Divider } from "@mui/material";
+import { LayoutDashboard, Settings as SettingsIcon, Code2, ClipboardCheck } from "lucide-react";
+import { listen } from "@tauri-apps/api/event";
+import Dashboard from "@/pages/Dashboard";
+import SettingsPage from "@/pages/SettingsPage";
+import DeveloperPage from "@/pages/DeveloperPage";
+
+type Page = "dashboard" | "settings" | "developer";
+
+const DRAWER_WIDTH = 220;
+
+const NAV_ITEMS: { id: Page; label: string; icon: React.ReactNode }[] = [
+  { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
+  { id: "settings", label: "Settings", icon: <SettingsIcon size={20} /> },
+  { id: "developer", label: "Developer", icon: <Code2 size={20} /> },
+];
 
 /**
- * Skeleton dashboard. This is intentionally minimal for the MVP pass —
- * it proves the clipboard pipeline end-to-end (Rust -> event -> store -> UI)
- * without yet building out Settings/Stats/Achievements pages.
+ * Root shell: fixed left nav + swapped page content. Kept as simple
+ * local state rather than a router — three pages doesn't warrant the
+ * dependency, and the tray menu already needs a plain "set active page"
+ * target for its "settings"/"about"/"open" events (see main.rs).
  */
 export default function App() {
-  const history = useClipboardStore((s) => s.history);
-  const todayCount = useClipboardStore((s) => s.todayCount);
-  const [lastFunny, setLastFunny] = useState<FunnyModeEvent | null>(null);
+  const [page, setPage] = useState<Page>("dashboard");
 
-  useClipboardWatcher((funnyEvent) => setLastFunny(funnyEvent));
+  useEffect(() => {
+    const unlistenPromise = listen<string>("tray://navigate", (event) => {
+      const target = event.payload;
+      if (target === "dashboard" || target === "settings" || target === "developer") {
+        setPage(target);
+      }
+    });
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, []);
 
   return (
-    <Container maxWidth="sm" sx={{ py: 6 }}>
-      <Stack spacing={3}>
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <ClipboardCheck size={28} />
-          <Typography variant="h4" fontWeight={800}>
+    <Box sx={{ display: "flex", height: "100vh" }}>
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: DRAWER_WIDTH,
+          flexShrink: 0,
+          [`& .MuiDrawer-paper`]: { width: DRAWER_WIDTH, boxSizing: "border-box", borderRight: "1px solid rgba(255,255,255,0.08)" },
+        }}
+      >
+        <Toolbar sx={{ px: 2.5 }}>
+          <ClipboardCheck size={22} style={{ marginRight: 10 }} />
+          <Typography variant="subtitle1" fontWeight={800}>
             StopC
           </Typography>
-          <Chip label="Copy Once. Trust Forever." size="small" variant="outlined" />
-        </Stack>
+        </Toolbar>
+        <Divider />
+        <List sx={{ px: 1, pt: 1 }}>
+          {NAV_ITEMS.map((item) => (
+            <ListItemButton
+              key={item.id}
+              selected={page === item.id}
+              onClick={() => setPage(item.id)}
+              sx={{ borderRadius: 2, mb: 0.5 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: "inherit" }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          ))}
+        </List>
+      </Drawer>
 
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="overline" color="text.secondary">
-            Today
-          </Typography>
-          <Typography variant="h3" fontWeight={700}>
-            {todayCount}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            copies detected
-          </Typography>
-        </Paper>
-
-        {lastFunny && (
-          <Paper sx={{ p: 2.5, borderLeft: "4px solid #7C5CFC" }}>
-            <Typography variant="subtitle2" color="text.secondary">
-              {lastFunny.mascot} Funny Mode (copy #{lastFunny.repeat_count})
-            </Typography>
-            <Typography variant="body1">{lastFunny.message}</Typography>
-          </Paper>
-        )}
-
-        <Box>
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            Recent Activity
-          </Typography>
-          <Stack spacing={1}>
-            {history.length === 0 && (
-              <Typography variant="body2" color="text.secondary">
-                Nothing copied yet — try Ctrl+C on something.
-              </Typography>
-            )}
-            {history.map((item) => (
-              <Paper key={item.timestamp} sx={{ p: 1.5 }}>
-                <Typography variant="body2">
-                  <strong>{item.kind}</strong> — {item.preview}
-                </Typography>
-              </Paper>
-            ))}
-          </Stack>
-        </Box>
-      </Stack>
-    </Container>
+      <Box component="main" sx={{ flexGrow: 1, overflow: "auto" }}>
+        {page === "dashboard" && <Dashboard />}
+        {page === "settings" && <SettingsPage />}
+        {page === "developer" && <DeveloperPage />}
+      </Box>
+    </Box>
   );
 }
