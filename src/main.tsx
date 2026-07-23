@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { ThemeProvider, CssBaseline, createTheme } from "@mui/material";
 import App from "@/App";
+import "@/assets/fonts/fonts.css";
 
 const theme = createTheme({
   palette: {
@@ -10,6 +11,9 @@ const theme = createTheme({
     background: { default: "#0F0F14", paper: "#17171F" },
   },
   shape: { borderRadius: 14 },
+  typography: {
+    fontFamily: '"Inter Tight", sans-serif',
+  },
 });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
