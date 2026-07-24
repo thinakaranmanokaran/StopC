@@ -1,95 +1,74 @@
-import { Container, Stack, Typography, Paper, Avatar, Chip, Divider, Box } from "@mui/material";
-import { Code2, Heart, Github } from "lucide-react";
+import { Container, Stack, Typography, Box } from "@mui/material";
+import { Github, Globe, Link, Instagram } from "lucide-react";
+import { motion } from "framer-motion";
+import M3SocialCard from "@/components/M3SocialCard";
 
-const APP_VERSION = "0.1.0";
+
 const DEVELOPER_NAME = "Thinakaran Manokaran";
+
+const SOCIAL_LINKS = [
+  { label: "Portfolio", url: "https://thinakaran.dev", icon: <Globe size={20} /> },
+  { label: "GitHub", url: "https://github.com/thinakaranmanokaran", icon: <Github size={20} /> },
+  { label: "LinkedIn", url: "https://www.linkedin.com/in/thinakaran-manohar", icon: <Link size={20} /> },
+  { label: "Instagram", url: "https://instagram.com/thinakaranmanokaran", icon: <Instagram size={20} /> },
+];
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.08, duration: 0.4, ease: "easeOut" },
+  }),
+};
 
 export default function DeveloperPage() {
   return (
     <Container maxWidth="sm" sx={{ py: 6 }}>
-      <Stack spacing={3}>
-        <Typography variant="h4" fontWeight={800}>
-          Developer
-        </Typography>
-
-        <Paper
-          sx={{
-            p: 4,
-            textAlign: "center",
-            background: "linear-gradient(135deg, #7C5CFC22, #3A28A822)",
-          }}
-        >
-          <Avatar
-            sx={{
-              width: 72,
-              height: 72,
-              mx: "auto",
-              mb: 2,
-              bgcolor: "primary.main",
-              fontSize: 28,
-              fontWeight: 800,
-            }}
-          >
-            TM
-          </Avatar>
-          <Typography variant="h6" fontWeight={700}>
-            {DEVELOPER_NAME}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Creator & Developer of StopC
-          </Typography>
-          <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 2 }}>
-            <Chip icon={<Code2 size={14} />} label="Rust + Tauri" size="small" variant="outlined" />
-            <Chip icon={<Heart size={14} />} label="Built with care" size="small" variant="outlined" />
+      <Stack spacing={0}>
+        {/* Header */}
+        <motion.div custom={0} initial="hidden" animate="visible" variants={fadeUp}>
+          <Stack alignItems="center" sx={{ mb: 4 }}>
+            <Typography variant="h4" fontWeight={800} textAlign="center">
+              {DEVELOPER_NAME}
+            </Typography>
+            <Typography variant="body1" color="primary.main" fontWeight={500} sx={{ mt: 0.5 }}>
+              Software Developer
+            </Typography>
           </Stack>
-        </Paper>
+        </motion.div>
 
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-            About StopC
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            StopC is a clipboard confidence app — not a clipboard manager. It
-            watches your clipboard and gives you an instant, beautiful
-            confirmation the moment a copy lands, so you never have to press
-            Ctrl+C twice out of doubt again.
-          </Typography>
-          <Divider sx={{ my: 2 }} />
-          <Stack spacing={1}>
-            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-              <Typography variant="body2" color="text.secondary">
-                Version
-              </Typography>
-              <Typography variant="body2">{APP_VERSION}</Typography>
-            </Box>
-            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-              <Typography variant="body2" color="text.secondary">
-                License
-              </Typography>
-              <Typography variant="body2">MIT</Typography>
-            </Box>
-            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-              <Typography variant="body2" color="text.secondary">
-                Stack
-              </Typography>
-              <Typography variant="body2">Rust · Tauri 2 · React · MUI</Typography>
-            </Box>
-          </Stack>
-        </Paper>
+        {/* About Bio */}
+        <motion.div custom={1} initial="hidden" animate="visible" variants={fadeUp}>
+          <Box sx={{ px: 1, mb: 4 }}>
+            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
+              About
+            </Typography>
+            <Typography variant="body1" color="text.secondary" lineHeight={1.7}>
+              Thinakaran Manokaran is a Software Developer passionate about
+              designing and building modern, reliable, and user-focused digital
+              experiences. He enjoys creating applications that combine clean
+              architecture, intuitive interfaces, and efficient performance across
+              web, mobile, and desktop platforms.
+            </Typography>
+            <Typography variant="body1" color="text.secondary" lineHeight={1.7} sx={{ mt: 2 }}>
+              His technical expertise includes Rust, TypeScript, React,
+              Tauri, Node.js, and modern web technologies. He is also
+              interested in software architecture, automation, artificial
+              intelligence, developer tools, and continuously learning
+              emerging technologies to build practical solutions.
+            </Typography>
+          </Box>
+        </motion.div>
 
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-            Mission
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            🐱 "Bro... it already copied." — Stop people from abusing Ctrl+C,
-            one delightful notification at a time.
-          </Typography>
-        </Paper>
-
-        <Stack direction="row" spacing={1} justifyContent="center" sx={{ pt: 1 }}>
-          <Chip icon={<Github size={14} />} label="Open source · MIT licensed" variant="outlined" />
-        </Stack>
+        {/* Social Links Grid */}
+        <motion.div custom={2} initial="hidden" animate="visible" variants={fadeUp}>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, px: 1 }}>
+            {SOCIAL_LINKS.map((link) => (
+              <M3SocialCard key={link.label} icon={link.icon} label={link.label} url={link.url} />
+            ))}
+          </Box>
+        </motion.div>
       </Stack>
     </Container>
   );

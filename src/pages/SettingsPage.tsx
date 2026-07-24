@@ -3,35 +3,64 @@ import {
   Container,
   Stack,
   Typography,
-  Paper,
-  Switch,
-  FormControlLabel,
   Divider,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-  Slider,
   Button,
   Snackbar,
   Alert,
   Box,
 } from "@mui/material";
-import { Bell, Sparkles, Volume2, Power, RotateCcw } from "lucide-react";
+import {
+  Bell,
+  Sparkles,
+  Volume2,
+  Power,
+  RotateCcw,
+  Palette,
+  Clapperboard,
+  Move,
+  Music,
+  Monitor,
+  Droplets,
+  Zap,
+  Layout,
+  Smile,
+  Terminal,
+  Sun,
+  Moon,
+  LayoutDashboard,
+  Gamepad2,
+  Cloud,
+  Info,
+  InfoIcon,
+  BadgeInfo,
+} from "lucide-react";
+import { motion } from "framer-motion";
 import { useSettingsStore, DEFAULT_SETTINGS } from "@/store/settingsStore";
 import type { StopCSettings } from "@/store/settingsStore";
 import { loadSettings, saveSettings, resetSettingsBackend } from "@/services/settingsService";
+import M3Card from "@/components/M3Card";
+import ToggleRow from "@/components/ToggleRow";
+import M3SelectableGrid from "@/components/M3SelectableGrid";
 
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 1.5 }}>
-      {icon}
+      <Box sx={{ color: "primary.main", display: "flex" }}>{icon}</Box>
       <Typography variant="subtitle1" fontWeight={700}>
         {title}
       </Typography>
     </Stack>
   );
 }
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.06, duration: 0.35, ease: "easeOut" },
+  }),
+};
 
 export default function SettingsPage() {
   const settings = useSettingsStore((s) => s.settings);
@@ -83,232 +112,237 @@ export default function SettingsPage() {
 
   return (
     <Container maxWidth="sm" sx={{ py: 6 }}>
-      <Stack spacing={3}>
-        <Typography variant="h4" fontWeight={800}>
-          Settings
-        </Typography>
+      <Stack spacing={0}>
+        <motion.div custom={0} initial="hidden" animate="visible" variants={fadeUp}>
+          <Typography variant="h4" fontWeight={800} sx={{ mb: 3 }}>
+            Settings
+          </Typography>
+        </motion.div>
 
-        {/* Notifications: the toggles you asked for */}
-        <Paper sx={{ p: 3 }}>
-          <SectionHeader icon={<Bell size={20} />} title="Notifications" />
-          <Stack spacing={0.5}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={settings.notifyOnText}
-                  onChange={(e) => update("notifyOnText", e.target.checked)}
+        {/* Notifications */}
+        <motion.div custom={1} initial="hidden" animate="visible" variants={fadeUp}>
+          <M3Card>
+            <SectionHeader icon={<Bell size={20} />} title="Notifications" />
+            <Stack spacing={0}>
+              <ToggleRow
+                label="Notify on text copy"
+                checked={settings.notifyOnText}
+                onChange={(v) => update("notifyOnText", v)}
+              />
+              <ToggleRow
+                label="Notify on image copy"
+                checked={settings.notifyOnImage}
+                onChange={(v) => update("notifyOnImage", v)}
+              />
+            </Stack>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Stack spacing={2.5}>
+              <Box>
+                <Typography variant="body1" fontWeight={500} sx={{ mb: 1 }}>Theme</Typography>
+                <M3SelectableGrid
+                  value={settings.theme}
+                  onChange={(v) => update("theme", v as StopCSettings["theme"])}
+                  columns={3}
+                  options={[
+                    { value: "material", label: "Material", icon: <Palette size={22} /> },
+                    { value: "glassmorphism", label: "Glass", icon: <Cloud size={22} /> },
+                    { value: "minimal", label: "Minimal", icon: <Layout size={22} /> },
+                    { value: "neon", label: "Neon", icon: <Zap size={22} /> },
+                    { value: "macos", label: "macOS", icon: <Monitor size={22} /> },
+                    { value: "windows11", label: "Win 11", icon: <LayoutDashboard size={22} /> },
+                    { value: "retro", label: "Retro", icon: <Gamepad2 size={22} /> },
+                    { value: "terminal", label: "Terminal", icon: <Terminal size={22} /> },
+                    { value: "cute", label: "Cute", icon: <Smile size={22} /> },
+                    { value: "dark", label: "Dark", icon: <Moon size={22} /> },
+                    { value: "light", label: "Light", icon: <Sun size={22} /> },
+                  ]}
                 />
-              }
-              label="Notify on text copy"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={settings.notifyOnImage}
-                  onChange={(e) => update("notifyOnImage", e.target.checked)}
+              </Box>
+
+              <Box>
+                <Typography variant="body1" fontWeight={500} sx={{ mb: 1 }}>Animation</Typography>
+                <M3SelectableGrid
+                  value={settings.animation}
+                  onChange={(v) => update("animation", v as StopCSettings["animation"])}
+                  columns={2}
+                  options={[
+                    { value: "slide", label: "Slide", icon: <Move size={22} /> },
+                    { value: "fade", label: "Fade", icon: <Droplets size={22} /> },
+                    { value: "scale", label: "Scale", icon: <Clapperboard size={22} /> },
+                    { value: "spring", label: "Spring", icon: <Zap size={22} /> },
+                  ]}
                 />
-              }
-              label="Notify on image copy"
-            />
-          </Stack>
+              </Box>
 
-          <Divider sx={{ my: 2 }} />
+              <Box>
+                <Typography variant="body1" fontWeight={500} sx={{ mb: 1 }}>Position</Typography>
+                <M3SelectableGrid
+                  value={settings.position}
+                  onChange={(v) => update("position", v as StopCSettings["position"])}
+                  columns={3}
+                  options={[
+                    { value: "top-left", label: "Top Left" },
+                    { value: "top-center", label: "Top Center" },
+                    { value: "top-right", label: "Top Right" },
+                    { value: "bottom-left", label: "Bottom Left" },
+                    { value: "bottom-center", label: "Bottom Center" },
+                    { value: "bottom-right", label: "Bottom Right" },
+                  ]}
+                />
+              </Box>
 
-          <Stack spacing={2.5}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="theme-label">Theme</InputLabel>
-              <Select
-                labelId="theme-label"
-                label="Theme"
-                value={settings.theme}
-                onChange={(e) => update("theme", e.target.value as StopCSettings["theme"])}
-              >
-                {[
-                  "material",
-                  "glassmorphism",
-                  "minimal",
-                  "neon",
-                  "macos",
-                  "windows11",
-                  "retro",
-                  "terminal",
-                  "cute",
-                  "dark",
-                  "light",
-                ].map((t) => (
-                  <MenuItem key={t} value={t}>
-                    {t}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+              <Box>
+                <Typography variant="body1" fontWeight={500} sx={{ mb: 1 }}>Duration</Typography>
+                <M3SelectableGrid
+                  value={settings.durationMs}
+                  onChange={(v) => update("durationMs", v as number)}
+                  columns={3}
+                  options={[
+                    { value: 1000, label: "1s" },
+                    { value: 2000, label: "2s" },
+                    { value: 3000, label: "3s" },
+                    { value: 5000, label: "5s" },
+                    { value: 8000, label: "8s" },
+                  ]}
+                />
+              </Box>
 
-            <FormControl fullWidth size="small">
-              <InputLabel id="animation-label">Animation</InputLabel>
-              <Select
-                labelId="animation-label"
-                label="Animation"
-                value={settings.animation}
-                onChange={(e) => update("animation", e.target.value as StopCSettings["animation"])}
-              >
-                {["slide", "fade", "scale", "spring"].map((a) => (
-                  <MenuItem key={a} value={a}>
-                    {a}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+              <Box>
+                <Typography variant="body1" fontWeight={500} sx={{ mb: 1 }}>Opacity</Typography>
+                <M3SelectableGrid
+                  value={settings.opacity}
+                  onChange={(v) => update("opacity", v as number)}
+                  columns={3}
+                  options={[
+                    { value: 0.4, label: "40%" },
+                    { value: 0.6, label: "60%" },
+                    { value: 0.8, label: "80%" },
+                    { value: 0.9, label: "90%" },
+                    { value: 1, label: "100%" },
+                  ]}
+                />
+              </Box>
 
-            <FormControl fullWidth size="small">
-              <InputLabel id="position-label">Position</InputLabel>
-              <Select
-                labelId="position-label"
-                label="Position"
-                value={settings.position}
-                onChange={(e) => update("position", e.target.value as StopCSettings["position"])}
-              >
-                {["top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right"].map(
-                  (p) => (
-                    <MenuItem key={p} value={p}>
-                      {p}
-                    </MenuItem>
-                  )
-                )}
-              </Select>
-            </FormControl>
-
-            <Box>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Duration: {(settings.durationMs / 1000).toFixed(1)}s
-              </Typography>
-              <Slider
-                min={500}
-                max={6000}
-                step={100}
-                value={settings.durationMs}
-                onChange={(_, v) => update("durationMs", v as number)}
-              />
-            </Box>
-
-            <Box>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Opacity: {Math.round(settings.opacity * 100)}%
-              </Typography>
-              <Slider
-                min={0.4}
-                max={1}
-                step={0.02}
-                value={settings.opacity}
-                onChange={(_, v) => update("opacity", v as number)}
-              />
-            </Box>
-
-            <Box>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Corner radius: {settings.cornerRadius}px
-              </Typography>
-              <Slider
-                min={0}
-                max={32}
-                step={1}
-                value={settings.cornerRadius}
-                onChange={(_, v) => update("cornerRadius", v as number)}
-              />
-            </Box>
-          </Stack>
-        </Paper>
+              <Box>
+                <Typography variant="body1" fontWeight={500} sx={{ mb: 1 }}>Corner radius</Typography>
+                <M3SelectableGrid
+                  value={settings.cornerRadius}
+                  onChange={(v) => update("cornerRadius", v as number)}
+                  columns={3}
+                  options={[
+                    { value: 0, label: "None" },
+                    { value: 8, label: "Small" },
+                    { value: 16, label: "Medium" },
+                    { value: 24, label: "Large" },
+                    { value: 32, label: "Full" },
+                  ]}
+                />
+              </Box>
+            </Stack>
+          </M3Card>
+        </motion.div>
 
         {/* Funny Mode */}
-        <Paper sx={{ p: 3 }}>
-          <SectionHeader icon={<Sparkles size={20} />} title="Funny Mode" />
-          <Stack spacing={0.5}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={settings.funnyModeEnabled}
-                  onChange={(e) => update("funnyModeEnabled", e.target.checked)}
-                />
-              }
-              label="Enable Funny Mode"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={settings.mascotsEnabled}
-                  onChange={(e) => update("mascotsEnabled", e.target.checked)}
-                />
-              }
-              label="Show mascots"
-            />
-          </Stack>
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Trigger after {settings.funnyModeThreshold} repeat Ctrl+C presses
-            </Typography>
-            <Slider
-              min={1}
-              max={10}
-              step={1}
-              value={settings.funnyModeThreshold}
-              onChange={(_, v) => update("funnyModeThreshold", v as number)}
-              disabled={!settings.funnyModeEnabled}
-            />
-          </Box>
-        </Paper>
+        <motion.div custom={2} initial="hidden" animate="visible" variants={fadeUp}>
+          <M3Card>
+            <SectionHeader icon={<Sparkles size={20} />} title="Funny Mode" />
+            <Stack spacing={0}>
+              <ToggleRow
+                label="Enable Funny Mode"
+                checked={settings.funnyModeEnabled}
+                onChange={(v) => update("funnyModeEnabled", v)}
+              />
+              <ToggleRow
+                label="Show mascots"
+                checked={settings.mascotsEnabled}
+                onChange={(v) => update("mascotsEnabled", v)}
+              />
+            </Stack>
+            <Box sx={{ mt: 2 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 12 }}>
+                <Typography variant="body1" fontWeight={500}>Funny Mode Threshold</Typography>
+                <BadgeInfo size={18} />
+                {/*
+                Tooltip content
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Trigger after {settings.funnyModeThreshold} repeat Ctrl+C presses
+                </Typography> */}
+              </div>
+              <M3SelectableGrid
+                value={settings.funnyModeThreshold}
+                onChange={(v) => update("funnyModeThreshold", v as number)}
+                columns={3}
+                disabled={!settings.funnyModeEnabled}
+                options={[
+                  { value: 2, label: "2x" },
+                  { value: 3, label: "3x" },
+                  { value: 5, label: "5x" },
+                  { value: 7, label: "7x" },
+                  { value: 10, label: "10x" },
+                ]}
+              />
+            </Box>
+          </M3Card>
+        </motion.div>
 
         {/* Sound */}
-        <Paper sx={{ p: 3 }}>
-          <SectionHeader icon={<Volume2 size={20} />} title="Sound" />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.soundEnabled}
-                onChange={(e) => update("soundEnabled", e.target.checked)}
+        <motion.div custom={3} initial="hidden" animate="visible" variants={fadeUp}>
+          <M3Card>
+            <SectionHeader icon={<Volume2 size={20} />} title="Sound" />
+            <ToggleRow
+              label="Enable sound"
+              checked={settings.soundEnabled}
+              onChange={(v) => update("soundEnabled", v)}
+            />
+            <Box sx={{ mt: 1.5 }}>
+              <Typography variant="body1" fontWeight={500} sx={{ mb: 1 }}>Sound pack</Typography>
+              <M3SelectableGrid
+                value={settings.soundPack}
+                onChange={(v) => update("soundPack", v as StopCSettings["soundPack"])}
+                columns={3}
+                disabled={!settings.soundEnabled}
+                options={[
+                  { value: "pop", label: "Pop", icon: <Music size={20} /> },
+                  { value: "click", label: "Click", icon: <Zap size={20} /> },
+                  { value: "bubble", label: "Bubble", icon: <Cloud size={20} /> },
+                  { value: "retro", label: "Retro", icon: <Gamepad2 size={20} /> },
+                  { value: "mute", label: "Mute", icon: <Volume2 size={20} /> },
+                ]}
               />
-            }
-            label="Enable sound"
-          />
-          <FormControl fullWidth size="small" sx={{ mt: 1.5 }} disabled={!settings.soundEnabled}>
-            <InputLabel id="sound-label">Sound pack</InputLabel>
-            <Select
-              labelId="sound-label"
-              label="Sound pack"
-              value={settings.soundPack}
-              onChange={(e) => update("soundPack", e.target.value as StopCSettings["soundPack"])}
-            >
-              {["pop", "click", "bubble", "retro", "mute"].map((s) => (
-                <MenuItem key={s} value={s}>
-                  {s}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Paper>
+            </Box>
+          </M3Card>
+        </motion.div>
 
         {/* Startup */}
-        <Paper sx={{ p: 3 }}>
-          <SectionHeader icon={<Power size={20} />} title="Startup" />
-          <FormControlLabel
-            control={
-              <Switch checked={settings.autoStart} onChange={(e) => update("autoStart", e.target.checked)} />
-            }
-            label="Launch StopC when you log in"
-          />
-        </Paper>
+        <motion.div custom={4} initial="hidden" animate="visible" variants={fadeUp}>
+          <M3Card>
+            <SectionHeader icon={<Power size={20} />} title="Startup" />
+            <ToggleRow
+              label="Launch StopC when you log in"
+              checked={settings.autoStart}
+              onChange={(v) => update("autoStart", v)}
+            />
+          </M3Card>
+        </motion.div>
 
-        <Stack direction="row" spacing={1.5}>
-          <Button variant="contained" onClick={handleSave} disabled={saving} sx={{ flex: 1 }}>
-            {saving ? "Saving…" : "Save Changes"}
-          </Button>
-          <Button
-            variant="outlined"
-            color="inherit"
-            startIcon={<RotateCcw size={16} />}
-            onClick={handleReset}
-          >
-            Reset to Defaults
-          </Button>
-        </Stack>
+        {/* Action Buttons */}
+        <motion.div custom={5} initial="hidden" animate="visible" variants={fadeUp}>
+          <Stack direction="row" spacing={1.5}>
+            <Button variant="contained" onClick={handleSave} disabled={saving} sx={{ flex: 1 }}>
+              {saving ? "Saving\u2026" : "Save Changes"}
+            </Button>
+            <Button
+              variant="outlined"
+              color="inherit"
+              startIcon={<RotateCcw size={16} />}
+              onClick={handleReset}
+            >
+              Reset to Defaults
+            </Button>
+          </Stack>
+        </motion.div>
       </Stack>
 
       <Snackbar
