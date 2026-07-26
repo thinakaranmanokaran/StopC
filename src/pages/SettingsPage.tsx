@@ -30,14 +30,13 @@ import {
   LayoutDashboard,
   Gamepad2,
   Cloud,
-  Info,
-  InfoIcon,
   BadgeInfo,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSettingsStore, DEFAULT_SETTINGS } from "@/store/settingsStore";
 import type { StopCSettings } from "@/store/settingsStore";
 import { loadSettings, saveSettings, resetSettingsBackend } from "@/services/settingsService";
+import { playNotificationSound } from "@/services/soundPlayer";
 import M3Card from "@/components/M3Card";
 import ToggleRow from "@/components/ToggleRow";
 import M3SelectableGrid from "@/components/M3SelectableGrid";
@@ -312,6 +311,30 @@ export default function SettingsPage() {
                 ]}
               />
             </Box>
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body1" fontWeight={500} sx={{ mb: 1 }}>Volume</Typography>
+              <M3SelectableGrid
+                value={settings.soundVolume}
+                onChange={(v) => update("soundVolume", v as number)}
+                columns={4}
+                disabled={!settings.soundEnabled || settings.soundPack === "mute"}
+                options={[
+                  { value: 0.2, label: "Low" },
+                  { value: 0.5, label: "Medium" },
+                  { value: 0.8, label: "High" },
+                  { value: 1, label: "Max" },
+                ]}
+              />
+            </Box>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => playNotificationSound(settings)}
+              disabled={!settings.soundEnabled || settings.soundPack === "mute"}
+              sx={{ mt: 2, borderRadius: "12px" }}
+            >
+              Test Sound
+            </Button>
           </M3Card>
         </motion.div>
 

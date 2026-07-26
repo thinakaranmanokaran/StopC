@@ -33,6 +33,7 @@ export interface StopCSettings {
   mascotsEnabled: boolean;
   soundEnabled: boolean;
   soundPack: "pop" | "click" | "bubble" | "retro" | "mute";
+  soundVolume: number;
   autoStart: boolean;
   funnyModeThreshold: number;
   pollIntervalMs: number;
@@ -53,6 +54,7 @@ export const DEFAULT_SETTINGS: StopCSettings = {
   mascotsEnabled: true,
   soundEnabled: true,
   soundPack: "pop",
+  soundVolume: 0.6,
   autoStart: true,
   funnyModeThreshold: 2,
   pollIntervalMs: 300,

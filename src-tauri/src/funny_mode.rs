@@ -6,7 +6,7 @@ use rdev::{listen, Event, EventType, Key};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
-use crate::funny_messages::random_message;
+use crate::funny_messages::{random_message, Mood};
 use crate::state::AppState;
 
 #[derive(Debug, Clone, Serialize)]
@@ -14,7 +14,7 @@ use crate::state::AppState;
 pub struct FunnyModeEvent {
     pub repeat_count: u32,
     pub message: String,
-    pub mascot: String,
+    pub mood: Mood,
 }
 
 /// Watches for Ctrl+C key combos system-wide and counts how many land
@@ -22,14 +22,15 @@ pub struct FunnyModeEvent {
 /// the clipboard watcher resets on every real change).
 ///
 /// PLATFORM NOTES:
-/// - macOS: requires the app to be granted Accessibility permission
-///   (System Settings > Privacy & Security > Accessibility), or `rdev`
-///   will silently receive no events. Prompt the user on first launch.
-/// - Windows: low-level keyboard hooks (`SetWindowsHookEx`) can be
-///   blocked by some security software / UAC contexts; document this
-///   as a known limitation.
-/// - Linux: X11 is supported; Wayland compositors vary in whether they
-///   allow global key listening at all — this is a known gap.
+/// - macOS: requires Accessibility permission (System Settings > Privacy
+///   & Security > Accessibility) or `rdev` silently receives no events.
+/// - Windows: low-level keyboard hooks can be blocked by security
+///   software, and won't see keys typed into an *elevated* window while
+///   StopC itself runs unelevated (a Windows UIPI restriction, not a
+///   StopC bug) — copying from an app "Run as administrator" won't be
+///   detected by Funny Mode in that case.
+/// - Linux: X11 is supported; Wayland global key listening varies by
+///   compositor.
 pub fn spawn_key_listener(app: AppHandle, state: Arc<AppState>) {
     thread::spawn(move || {
         let ctrl_down = Arc::new(AtomicBool::new(false));
@@ -45,7 +46,19 @@ pub fn spawn_key_listener(app: AppHandle, state: Arc<AppState>) {
                     ctrl_down_cb.store(false, Ordering::SeqCst);
                 }
                 EventType::KeyPress(Key::KeyC) if ctrl_down_cb.load(Ordering::SeqCst) => {
-                    on_ctrl_c(&app, &state);
+                    // IMPORTANT: rdev's `listen` callback runs *synchronously*
+                    // on the OS-level global-hook thread. The previous
+                    // version of this code called a settle-delay + counting
+                    // routine directly here, which blocked that hook thread
+                    // for up to 500ms on every single Ctrl+C — under rapid
+                    // repeated presses, this caused the OS to drop or
+                    // coalesce keystrokes before they ever reached this
+                    // callback, so most presses were silently lost and the
+                    // funny-mode threshold was rarely reached. Spawning a
+                    // fresh thread per press keeps the hook thread free.
+                    let app = app.clone();
+                    let state = state.clone();
+                    thread::spawn(move || on_ctrl_c(&app, &state));
                 }
                 _ => {}
             }
@@ -64,25 +77,27 @@ fn on_ctrl_c(app: &AppHandle, state: &Arc<AppState>) {
         return;
     }
 
-    // The clipboard watcher runs on its own poll cycle; give it a brief
-    // window to observe a real change before we decide this Ctrl+C was
-    // a no-op. This avoids a race where Funny Mode fires on the very
-    // press that *did* copy something new.
+    // Give the clipboard watcher's poll cycle a brief window to observe
+    // a real change before deciding this Ctrl+C was a no-op — avoids a
+    // race where Funny Mode fires on the very press that *did* copy
+    // something new. Safe to block here now since this runs on its own
+    // thread, not the OS hook thread.
     let settle = std::cmp::min(settings.poll_interval_ms + 50, 500);
     thread::sleep(std::time::Duration::from_millis(settle));
 
     let count = state.repeat_count.fetch_add(1, Ordering::SeqCst) + 1;
 
     if count >= settings.funny_mode_threshold {
-        let (message, mascot) = random_message();
+        let (message, mood) = random_message();
         let payload = FunnyModeEvent {
             repeat_count: count,
             message: message.to_string(),
-            mascot: mascot.to_string(),
+            mood,
         };
         if let Err(e) = app.emit("funny-mode://triggered", payload) {
             eprintln!("[stopc] failed to emit funny-mode event: {e}");
         }
+        crate::notification::show_notification(app, state, "funny");
         // Reset so the next few presses build back up rather than
         // spamming a popup on every single subsequent press.
         state.repeat_count.store(0, Ordering::SeqCst);

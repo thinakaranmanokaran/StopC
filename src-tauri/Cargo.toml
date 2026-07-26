@@ -2,7 +2,7 @@
 name = "stopc"
 version = "0.1.0"
 description = "Copy Once. Trust Forever. — a clipboard confidence app."
-authors = ["StopC Contributors"]
+authors = ["Thinakaran Manokaran"]
 license = "MIT"
 edition = "2021"
 

@@ -16,20 +16,22 @@ export interface ClipboardEventPayload {
   /** Short preview string, already truncated by the backend for safety/perf. */
   preview: string;
   /** Byte length of the raw content, when known (e.g. image size). */
-  size_bytes?: number;
+  sizeBytes?: number;
   /** For images: "1920x1080" style dimensions. */
   dimensions?: string;
   /** For files/folders: number of items. */
-  item_count?: number;
+  itemCount?: number;
   /** Unix millis timestamp from the backend clock. */
   timestamp: number;
   /** True if this event was suppressed as a duplicate (same hash as last copy). */
-  is_duplicate: boolean;
+  isDuplicate: boolean;
 }
+
+import type { Mood } from "@/utils/mood";
 
 export interface FunnyModeEvent {
   /** Consecutive Ctrl+C presses detected without a clipboard change. */
-  repeat_count: number;
+  repeatCount: number;
   message: string;
-  mascot: string;
+  mood: Mood;
 }

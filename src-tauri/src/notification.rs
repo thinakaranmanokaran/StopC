@@ -7,20 +7,31 @@ use tauri::{AppHandle, LogicalPosition, Manager, Monitor};
 use crate::state::AppState;
 
 const WINDOW_LABEL: &str = "notification";
-const MARGIN: f64 = 16.0;
+// Small offset from the screen edge; the rest of the visual spacing to
+// the toast itself comes from padding inside the (larger, transparent)
+// notification window — see src/notification-main.tsx's edge-aligned
+// flex wrapper. This two-layer approach lets the same fixed-size window
+// host both the compact copy toast and the taller funny-mode toast
+// without needing to resize the OS window on every show.
+const MARGIN: f64 = 8.0;
 
 /// Positions the notification window at the configured screen corner,
-/// shows it, and schedules it to hide again after `duration_ms`.
-/// This is the piece that was previously missing: the window used to
-/// only ever get *positioned*, never actually shown.
-pub fn show_notification(app: &AppHandle, state: &Arc<AppState>) {
+/// shows it, and schedules it to hide again after an appropriate
+/// duration for the content kind ("copy" or "funny" — funny messages
+/// get a bit longer since there's more to read).
+pub fn show_notification(app: &AppHandle, state: &Arc<AppState>, kind: &str) {
     let Some(window) = app.get_webview_window(WINDOW_LABEL) else {
         return;
     };
 
     let (position, duration_ms) = {
         let settings = state.settings.lock().unwrap();
-        (settings.position.clone(), settings.duration_ms)
+        let duration = if kind == "funny" {
+            settings.duration_ms.max(3500)
+        } else {
+            settings.duration_ms
+        };
+        (settings.position.clone(), duration)
     };
 
     if let Some(monitor) = window.current_monitor().ok().flatten() {
@@ -30,14 +41,14 @@ pub fn show_notification(app: &AppHandle, state: &Arc<AppState>) {
 
     let _ = window.show();
 
-    // Hide it again after the configured duration. Spawning a thread per
-    // toast is cheap at this frequency; if this needs to be more precise
-    // later (e.g. cancel-on-next-event so back-to-back copies don't
-    // fight over the hide timer), swap this for a shared
-    // debounce/generation counter in AppState.
+    // Hide it again after the duration. Spawning a thread per toast is
+    // cheap at this frequency; if two toasts land close together this
+    // just means the window may hide slightly early/late relative to
+    // the second one — visually harmless since the content itself is
+    // React-driven and already handles its own fade-out timing.
     let window_clone = window.clone();
     thread::spawn(move || {
-        thread::sleep(Duration::from_millis(duration_ms));
+        thread::sleep(Duration::from_millis(duration_ms + 400)); // + exit animation buffer
         let _ = window_clone.hide();
     });
 }
@@ -62,8 +73,8 @@ fn compute_position(monitor: &Monitor, position: &str, window: &tauri::WebviewWi
     let screen_h = screen_size.height as f64 / scale;
 
     let win_size = window.outer_size().unwrap_or(tauri::PhysicalSize {
-        width: 360,
-        height: 120,
+        width: 380,
+        height: 260,
     });
     let win_w = win_size.width as f64 / scale;
     let win_h = win_size.height as f64 / scale;

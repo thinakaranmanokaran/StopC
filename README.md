@@ -15,6 +15,78 @@ copy lands, so you stop double- and triple-pressing Ctrl+C out of doubt.
 
 ## Changelog
 
+### This pass (themes, sound, Funny Mode, mascots, dashboard, background-run)
+
+⚠️ **`src-tauri` was missing from the uploaded project again**, so the
+Rust backend below was reconstructed from the last known-good version
+plus these fixes — if you hand-edited any `.rs` files outside this
+chat since then, those changes aren't reflected here. Please diff
+before assuming nothing else changed.
+
+- **Fixed — themes never applied:** the notification window runs in
+  its own isolated JS context and never loaded settings from the
+  backend, so it always used hardcoded defaults regardless of what was
+  picked in Settings. It now calls `get_settings` on launch and stays
+  live-synced via a new `settings://updated` event the backend emits
+  after every save/reset. All 11 themes were also rebuilt as complete
+  treatments (border + shadow + blur, not just a background swap) —
+  glassmorphism in particular now gets real `backdrop-filter` blur
+  against the transparent window.
+- **Fixed — sound never played:** nothing played audio at all before.
+  Added a Web Audio–based synthesizer (`src/services/soundPlayer.ts`)
+  with distinct pop/click/bubble/retro tones — no bundled audio files
+  needed, works fully offline. Added a volume control and "Test Sound"
+  button in Settings.
+- **Fixed — Funny Mode not firing:** the real bug was that `rdev`'s
+  global key-hook callback ran a blocking `sleep` (up to 500ms)
+  *synchronously on the OS hook thread* on every Ctrl+C press. Under
+  rapid repeated presses this caused the OS to drop/coalesce keystrokes
+  before they ever reached the counting logic, so the threshold was
+  rarely reached. Fixed by moving that work to a spawned thread per
+  press (`funny_mode.rs`). Separately, the floating toast window never
+  listened for `funny-mode://triggered` at all — only the Dashboard
+  page did — so even a successful trigger was invisible unless you had
+  the dashboard open. Both are fixed.
+- **Added — cat mood illustrations:** original SVG cat-face art (7
+  moods: annoyed/laughing/shocked/judging/crying/proud/sleepy),
+  genuinely hand-coded shapes rather than any reproduction of an
+  existing meme template, shown alongside each funny message.
+- **Improved — notification UI:** countdown progress bar, icon badge
+  styling, theme-correct shadows/borders, and an edge-aligned layout
+  so the toast correctly hugs whichever screen corner is configured
+  regardless of whether it's showing the compact copy toast or the
+  taller funny-mode one.
+- **Added — Dashboard "Try It Out" card:** a text field + Copy button
+  so you can trigger a real notification immediately without leaving
+  the app to find something to copy.
+- **Fixed — background-run behavior:** the main window used to open
+  automatically on every launch (`"visible": true` in
+  `tauri.conf.json`). It now starts hidden — StopC only runs the tray
+  icon + background watchers until you click "Open Dashboard." A
+  one-time native OS notification on first launch plus an in-app
+  notice on the Dashboard both explain this explicitly, since most
+  apps *do* open a window and the silent default could otherwise read
+  as broken.
+- **Fixed — three silent field-name bugs:** Rust's
+  `#[serde(rename_all = "camelCase")]` was serializing
+  `FunnyModeEvent.repeat_count` as `repeatCount` and
+  `ClipboardEventPayload.{is_duplicate,size_bytes,item_count}` as
+  `{isDuplicate,sizeBytes,itemCount}`, but the frontend TypeScript
+  types declared the snake_case Rust names — meaning those fields were
+  silently `undefined` on every event since the very first version of
+  this codebase. Fixed across `types/clipboard.ts` and every file that
+  read them.
+- **Fixed — missing production build entry:** `vite.config.ts` never
+  registered `notification.html` as a Rollup input, so it would be
+  silently absent from `dist/` in a production `tauri build` even
+  though `tauri dev` masked the problem (Vite's dev server serves any
+  file, entry or not).
+- **Cleaned up:** removed unused `Info`/`InfoIcon` imports in
+  `SettingsPage.tsx` that would fail a strict `tsc` build
+  (`noUnusedLocals` is on in `tsconfig.json`).
+
+### Earlier pass
+
 - **Fixed:** the notification toast window was created but never shown —
   `clipboard.rs` emitted events correctly and the frontend updated
   state, but nothing ever called `window.show()` on the notification
@@ -212,6 +284,15 @@ these are the spots most likely to need a small adjustment:
    occasionally get renamed between minor versions; if the app fails to
    start with a permission error, the console message names the exact
    missing permission to add.
+4. **`tauri-plugin-notification`'s exact method names** in
+   `main.rs`'s `announce_background_launch()` —
+   `NotificationExt::permission_state()` / `request_permission()` and
+   the `PermissionState` enum variants (`Granted`/`Prompt`/
+   `PromptWithRationale`) are correct as of the plugin's early-2.x API,
+   but this is one of the areas most likely to have shifted by the
+   time you build. If it doesn't compile, the fix is almost always
+   just adjusting these two calls — the rest of the startup-notification
+   logic doesn't depend on the exact API shape.
 
 None of these affect the overall architecture — they're the normal
 "first compile after scaffolding" friction of a fast-moving ecosystem.

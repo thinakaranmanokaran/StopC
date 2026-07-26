@@ -5,8 +5,6 @@ use std::sync::Mutex;
 /// the Ctrl+C key-listener thread, and Tauri command handlers.
 pub struct AppState {
     /// Hash of the last clipboard content we emitted an event for.
-    /// Used by both the watcher (to detect real changes) and Funny
-    /// Mode (to know whether a Ctrl+C press actually changed anything).
     pub last_hash: Mutex<u64>,
     /// Millis timestamp (unix epoch) of the last real clipboard change.
     pub last_change_at: AtomicU64,
@@ -47,6 +45,7 @@ pub struct Settings {
     pub mascots_enabled: bool,
     pub sound_enabled: bool,
     pub sound_pack: String,
+    pub sound_volume: f32,
     pub auto_start: bool,
     /// How many no-op Ctrl+C presses in a row trigger a Funny Mode popup.
     pub funny_mode_threshold: u32,
@@ -60,9 +59,9 @@ pub struct Settings {
 }
 
 // `#[serde(default)]` on the struct above means any field missing from a
-// saved/older settings.json (e.g. after adding notify_on_text/image) is
-// silently filled from Default::default() below, instead of failing the
-// whole deserialization. Keep this in sync with settingsStore.ts.
+// saved/older settings.json (e.g. after adding a new field) is silently
+// filled from Default::default() below, instead of failing the whole
+// deserialization. Keep this in sync with settingsStore.ts.
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -76,6 +75,7 @@ impl Default for Settings {
             mascots_enabled: true,
             sound_enabled: true,
             sound_pack: "pop".into(),
+            sound_volume: 0.6,
             auto_start: true,
             funny_mode_threshold: 2,
             poll_interval_ms: 300,

@@ -13,6 +13,7 @@ use std::sync::Arc;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{Emitter, Manager, WindowEvent};
+use tauri_plugin_notification::{NotificationExt, PermissionState};
 
 use state::AppState;
 
@@ -32,6 +33,13 @@ fn main() {
             // Background threads: clipboard polling + global Ctrl+C listener.
             clipboard::spawn_watcher(app.handle().clone(), state.clone());
             funny_mode::spawn_key_listener(app.handle().clone(), state.clone());
+
+            // The main window starts hidden (see tauri.conf.json) — StopC
+            // is meant to run quietly in the background, not pop a window
+            // open on every login. A single native notification on first
+            // launch makes that behavior obvious instead of leaving the
+            // user wondering whether anything happened.
+            announce_background_launch(app.handle());
 
             // System tray.
             let open = MenuItem::with_id(app, "open", "Open Dashboard", true, None::<&str>)?;
@@ -53,18 +61,21 @@ fn main() {
                 .show_menu_on_left_click(true)
                 .icon(app.default_window_icon().unwrap().clone())
                 .on_menu_event(|app, event| {
+                    if event.id.as_ref() == "quit" {
+                        app.exit(0);
+                        return;
+                    }
                     let Some(main) = app.get_webview_window("main") else {
                         return;
                     };
                     let _ = main.show();
                     let _ = main.set_focus();
                     match event.id.as_ref() {
-                        "quit" => app.exit(0),
                         "settings" => {
                             let _ = app.emit("tray://navigate", "settings");
                         }
                         "about" => {
-                            let _ = app.emit("tray://navigate", "developer");
+                            let _ = app.emit("tray://navigate", "about");
                         }
                         "open" => {
                             let _ = app.emit("tray://navigate", "dashboard");
@@ -98,4 +109,31 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running StopC");
+}
+
+/// Shows a single native OS notification on launch explaining that
+/// StopC runs in the background with no window — otherwise a user who
+/// expects an app window to appear (most apps do) may think nothing
+/// happened and quit it.
+fn announce_background_launch(app: &tauri::AppHandle) {
+    let handle = app.notification();
+    match handle.permission_state() {
+        Ok(PermissionState::Granted) => {
+            let _ = handle
+                .builder()
+                .title("StopC is running")
+                .body("It'll stay in the background — look for the tray icon. Copy something to see it in action.")
+                .show();
+        }
+        Ok(PermissionState::Prompt) | Ok(PermissionState::PromptWithRationale) => {
+            if let Ok(PermissionState::Granted) = handle.request_permission() {
+                let _ = handle
+                    .builder()
+                    .title("StopC is running")
+                    .body("It'll stay in the background — look for the tray icon. Copy something to see it in action.")
+                    .show();
+            }
+        }
+        _ => {}
+    }
 }

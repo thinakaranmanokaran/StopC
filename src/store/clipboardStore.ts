@@ -19,7 +19,7 @@ export const useClipboardStore = create<ClipboardState>((set) => ({
   totalCount: 0,
   pushEvent: (event) =>
     set((state) => {
-      if (event.is_duplicate) {
+      if (event.isDuplicate) {
         // Duplicates feed Funny Mode elsewhere; they don't count as new copies.
         return { lastEvent: event };
       }

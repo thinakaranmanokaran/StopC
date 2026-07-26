@@ -37,18 +37,10 @@ const PREVIEW_MAX_CHARS: usize = 120;
 
 /// Starts the background clipboard watcher.
 ///
-/// IMPORTANT: "no polling" from the product spec is aspirational — the
-/// underlying OS clipboard APIs (Win32, NSPasteboard, X11 selections)
-/// don't expose a uniform, dependency-free push notification across all
-/// three platforms. Windows *does* support `AddClipboardFormatListener`
-/// and macOS technically only exposes `NSPasteboard.changeCount` (which
-/// itself must be polled — Apple has never shipped a push API for this).
-/// The pragmatic, cross-platform approach — and what most clipboard
-/// utilities actually ship — is a lightweight poll loop. 300ms is
-/// imperceptible to the user and costs negligible CPU while idle.
-///
-/// A future improvement could special-case a native listener on Windows
-/// via `AddClipboardFormatListener` and fall back to polling elsewhere.
+/// "No polling" from the product spec is aspirational — the underlying
+/// OS clipboard APIs (Win32, NSPasteboard, X11 selections) don't expose
+/// a uniform, dependency-free push notification across all three
+/// platforms, so this is a lightweight poll loop (default 300ms).
 pub fn spawn_watcher(app: AppHandle, state: std::sync::Arc<AppState>) {
     thread::spawn(move || {
         let mut clipboard = match Clipboard::new() {
@@ -81,7 +73,7 @@ pub fn spawn_watcher(app: AppHandle, state: std::sync::Arc<AppState>) {
                         }
                     };
                     if should_notify {
-                        crate::notification::show_notification(&app, &state);
+                        crate::notification::show_notification(&app, &state, "copy");
                     }
                     state.reset_funny_counter();
                     state
@@ -93,12 +85,7 @@ pub fn spawn_watcher(app: AppHandle, state: std::sync::Arc<AppState>) {
     });
 }
 
-/// Reads the current clipboard, hashes it, and returns a payload if the
-/// content differs from the last known hash. Returns None on read errors
-/// (e.g. transient lock contention with another app) so the loop just
-/// tries again next tick.
 fn check_clipboard(clipboard: &mut Clipboard, state: &AppState) -> Option<ClipboardEventPayload> {
-    // Text is checked first since it's the overwhelmingly common case.
     if let Ok(text) = clipboard.get_text() {
         if text.is_empty() {
             return None;
@@ -130,9 +117,8 @@ fn check_clipboard(clipboard: &mut Clipboard, state: &AppState) -> Option<Clipbo
     }
 
     // File/folder clipboard payloads (URI lists) aren't exposed by
-    // arboard today. On Windows/macOS/Linux this needs a small native
-    // shim (CF_HDROP, NSFilenamesPasteboardType, text/uri-list) — see
-    // README "Known Limitations" for the tracked follow-up.
+    // arboard today — needs a small native shim (CF_HDROP,
+    // NSFilenamesPasteboardType, text/uri-list) per platform.
     None
 }
 
@@ -151,8 +137,6 @@ fn build_if_changed(
 
 fn hash_bytes(bytes: &[u8]) -> u64 {
     let digest = Sha256::digest(bytes);
-    // Fold the 256-bit digest down to a u64 — plenty of collision
-    // resistance for "did the clipboard change" purposes.
     let mut out = [0u8; 8];
     out.copy_from_slice(&digest[0..8]);
     u64::from_le_bytes(out)

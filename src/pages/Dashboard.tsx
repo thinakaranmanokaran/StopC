@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Box, Container, Stack, Typography } from "@mui/material";
-import { ClipboardCheck, Settings, Code2, Info, FileText, Image, Files, Folder, Clock } from "lucide-react";
+import { Box, Container, Stack, Typography, TextField, Button, Alert } from "@mui/material";
+import { ClipboardCheck, Settings, Code2, Info, FileText, Image, Files, Folder, Clock, Copy, Check } from "lucide-react";
 import { motion } from "framer-motion";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { useClipboardWatcher } from "@/hooks/useClipboardWatcher";
 import { useClipboardStore } from "@/store/clipboardStore";
 
@@ -9,6 +10,7 @@ import M3Card from "@/components/M3Card";
 import M3ListItem from "@/components/M3ListItem";
 import M3IconButton from "@/components/M3IconButton";
 import type { FunnyModeEvent, ClipboardKind } from "@/types/clipboard";
+import { MOOD_EMOJI } from "@/utils/mood";
 
 const KIND_ICONS: Record<ClipboardKind, React.ReactNode> = {
   text: <FileText size={20} />,
@@ -53,6 +55,19 @@ export default function Dashboard() {
   const [lastFunny, setLastFunny] = useState<FunnyModeEvent | null>(null);
   useClipboardWatcher((funnyEvent) => setLastFunny(funnyEvent));
 
+  const [testText, setTestText] = useState("StopC just copied this for you 🎉");
+  const [justCopied, setJustCopied] = useState(false);
+
+  const handleTestCopy = async () => {
+    try {
+      await writeText(testText);
+      setJustCopied(true);
+      setTimeout(() => setJustCopied(false), 1500);
+    } catch (e) {
+      console.error("[stopc] test copy failed:", e);
+    }
+  };
+
   return (
     <Container maxWidth="sm" sx={{ py: 6 }}>
       <Stack spacing={0}>
@@ -83,8 +98,21 @@ export default function Dashboard() {
           </Stack>
         </motion.div>
 
-        {/* Stats Display */}
+        {/* Background-run notice */}
         <motion.div custom={1} initial="hidden" animate="visible" variants={fadeUp}>
+          <Alert
+            severity="info"
+            variant="outlined"
+            sx={{ mb: 3, borderRadius: "16px", alignItems: "center" }}
+          >
+            StopC runs quietly in the background — closing this window won't
+            quit it. Look for the tray icon; a toast pops up automatically
+            whenever you copy something.
+          </Alert>
+        </motion.div>
+
+        {/* Stats Display */}
+        <motion.div custom={2} initial="hidden" animate="visible" variants={fadeUp}>
           <Stack alignItems="center" sx={{ mb: 5 }}>
             <Typography
               variant="caption"
@@ -106,13 +134,40 @@ export default function Dashboard() {
           </Stack>
         </motion.div>
 
+        {/* Try It Out */}
+        <motion.div custom={3} initial="hidden" animate="visible" variants={fadeUp}>
+          <M3Card title="Try It Out">
+            <Stack spacing={1.5}>
+              <TextField
+                value={testText}
+                onChange={(e) => setTestText(e.target.value)}
+                size="small"
+                fullWidth
+                multiline
+                maxRows={3}
+                placeholder="Type something to test the notification…"
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "14px" } }}
+              />
+              <Button
+                variant="contained"
+                onClick={handleTestCopy}
+                disabled={!testText.trim()}
+                startIcon={justCopied ? <Check size={16} /> : <Copy size={16} />}
+                sx={{ borderRadius: "14px", alignSelf: "flex-start" }}
+              >
+                {justCopied ? "Copied!" : "Copy This Text"}
+              </Button>
+            </Stack>
+          </M3Card>
+        </motion.div>
+
         {/* Funny Mode Banner */}
         {lastFunny && (
-          <motion.div custom={2} initial="hidden" animate="visible" variants={fadeUp}>
+          <motion.div custom={4} initial="hidden" animate="visible" variants={fadeUp}>
             <M3Card sx={{ borderLeft: "4px solid", borderColor: "primary.main" }}>
               <Stack spacing={0.5}>
                 <Typography variant="subtitle2" color="text.secondary">
-                  {lastFunny.mascot} Funny Mode (copy #{lastFunny.repeat_count})
+                  {MOOD_EMOJI[lastFunny.mood]} Funny Mode (copy #{lastFunny.repeatCount})
                 </Typography>
                 <Typography variant="body2">{lastFunny.message}</Typography>
               </Stack>
@@ -121,7 +176,7 @@ export default function Dashboard() {
         )}
 
         {/* Recent Activity */}
-        <motion.div custom={3} initial="hidden" animate="visible" variants={fadeUp}>
+        <motion.div custom={5} initial="hidden" animate="visible" variants={fadeUp}>
           <M3Card title="Recent Activity">
             {history.length === 0 ? (
               <Stack alignItems="center" py={3}>
@@ -157,7 +212,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Navigation Icon Row */}
-        <motion.div custom={4} initial="hidden" animate="visible" variants={fadeUp}>
+        <motion.div custom={6} initial="hidden" animate="visible" variants={fadeUp}>
           <Stack direction="row" justifyContent="center" spacing={4} sx={{ pt: 2, pb: 4 }}>
             <M3IconButton
               icon={<Settings size={24} />}
