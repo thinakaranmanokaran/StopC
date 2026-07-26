@@ -8,6 +8,7 @@ import {
   Snackbar,
   Alert,
   Box,
+  Tooltip,
 } from "@mui/material";
 import {
   Bell,
@@ -260,15 +261,21 @@ export default function SettingsPage() {
               />
             </Stack>
             <Box sx={{ mt: 2 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 12 }}>
+              <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 1.5 }}>
                 <Typography variant="body1" fontWeight={500}>Funny Mode Threshold</Typography>
-                <BadgeInfo size={18} />
-                {/*
-                Tooltip content
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Trigger after {settings.funnyModeThreshold} repeat Ctrl+C presses
-                </Typography> */}
-              </div>
+                <Tooltip
+                  arrow
+                  placement="top"
+                  title={`How many times in a row you can press Ctrl+C on clipboard content that hasn't changed before StopC shows a funny message. Lower = it teases you sooner; higher = it gives you more room before speaking up. Currently, Trigger after ${settings.funnyModeThreshold} repeat Ctrl+C presses on the same content.`}
+                >
+                  <Box sx={{ display: "flex", color: "text.secondary", cursor: "help" }}>
+                    <BadgeInfo size={18} />
+                  </Box>
+                </Tooltip>
+              </Stack>
+              {/* <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Trigger after {settings.funnyModeThreshold} repeat Ctrl+C presses on the same content.
+              </Typography> */}
               <M3SelectableGrid
                 value={settings.funnyModeThreshold}
                 onChange={(v) => update("funnyModeThreshold", v as number)}
