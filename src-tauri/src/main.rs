@@ -17,15 +17,35 @@ use tauri_plugin_notification::{NotificationExt, PermissionState};
 
 use state::AppState;
 
+/// CLI marker we register as an extra arg on the autostart entry (see
+/// `tauri_plugin_autostart::init` below). If this arg is present, we
+/// know the OS launched us silently at login — not a human clicking
+/// the app icon — so the main window should stay hidden.
+const AUTOSTART_MARKER: &str = "--autostart";
+
 fn main() {
     tauri::Builder::default()
+        // Must be the first plugin registered. When the app is already
+        // running (in the tray) and the user launches it again — Start
+        // Menu, Search, Desktop icon — the OS would normally spawn a
+        // second process; this plugin intercepts that and instead fires
+        // the callback below in the *existing* process, so we can just
+        // show the dashboard instead of doing nothing (the old, no
+        // single-instance-guard behavior silently did nothing, at best
+        // launching a confusing 2nd process on some platforms).
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(main) = app.get_webview_window("main") {
+                let _ = main.show();
+                let _ = main.set_focus();
+                let _ = app.emit("tray://navigate", "dashboard");
+            }
+        }))
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None,
+            Some(vec![AUTOSTART_MARKER]),
         ))
-        .plugin(tauri_plugin_store::Builder::default().build())
         .manage(Arc::new(AppState::default()))
         .setup(|app| {
             let state: Arc<AppState> = app.state::<Arc<AppState>>().inner().clone();
@@ -34,12 +54,23 @@ fn main() {
             clipboard::spawn_watcher(app.handle().clone(), state.clone());
             funny_mode::spawn_key_listener(app.handle().clone(), state.clone());
 
-            // The main window starts hidden (see tauri.conf.json) — StopC
-            // is meant to run quietly in the background, not pop a window
-            // open on every login. A single native notification on first
-            // launch makes that behavior obvious instead of leaving the
-            // user wondering whether anything happened.
-            announce_background_launch(app.handle());
+            // Only show the dashboard on launches a human actually
+            // triggered (first install, Start Menu, Search, Desktop
+            // icon) — not on the silent OS autostart-at-login launch.
+            // The single-instance handler above covers "app already
+            // running, user clicked the icon again"; this covers "app
+            // wasn't running yet and this very process is the one
+            // starting because of that click."
+            let launched_by_autostart = std::env::args().any(|a| a == AUTOSTART_MARKER);
+            if !launched_by_autostart {
+                if let Some(main) = app.get_webview_window("main") {
+                    let _ = main.show();
+                    let _ = main.set_focus();
+                }
+            } else {
+                // Still a good moment to let the user know we're alive.
+                announce_background_launch(app.handle());
+            }
 
             // System tray.
             let open = MenuItem::with_id(app, "open", "Open Dashboard", true, None::<&str>)?;
@@ -106,15 +137,15 @@ fn main() {
             commands::get_settings,
             commands::save_settings,
             commands::reset_settings,
+            commands::hide_notification_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running StopC");
 }
 
-/// Shows a single native OS notification on launch explaining that
-/// StopC runs in the background with no window — otherwise a user who
-/// expects an app window to appear (most apps do) may think nothing
-/// happened and quit it.
+/// Shows a single native OS notification explaining that StopC runs in
+/// the background with no window — otherwise a user who expects an app
+/// window to appear (most apps do) may think nothing happened.
 fn announce_background_launch(app: &tauri::AppHandle) {
     let handle = app.notification();
     match handle.permission_state() {

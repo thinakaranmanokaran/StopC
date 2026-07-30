@@ -40,13 +40,9 @@ function tone(
   osc.stop(now + duration + 0.02);
 }
 
-/** Plays the configured sound pack for a notification. No-op if muted/disabled. */
-export function playNotificationSound(settings: Pick<StopCSettings, "soundEnabled" | "soundPack" | "soundVolume">) {
-  if (!settings.soundEnabled || settings.soundPack === "mute") return;
-  const audioCtx = getContext();
-  if (!audioCtx) return;
-  const v = Math.max(0, Math.min(1, settings.soundVolume)) * 0.35; // headroom so it's never jarring
+type SoundSettings = Pick<StopCSettings, "soundEnabled" | "soundPack" | "soundVolume">;
 
+function packTones(audioCtx: AudioContext, settings: SoundSettings, v: number) {
   switch (settings.soundPack) {
     case "pop":
       tone(audioCtx, 740, 0, 0.12, v, "sine");
@@ -70,12 +66,31 @@ export function playNotificationSound(settings: Pick<StopCSettings, "soundEnable
   }
 }
 
-/** A slightly more attention-grabbing two-tone chime for Funny Mode. */
-export function playFunnySound(settings: Pick<StopCSettings, "soundEnabled" | "soundPack" | "soundVolume">) {
-  if (!settings.soundEnabled || settings.soundPack === "mute") return;
+/** Plays the configured sound pack for a copy notification. No-op if sound is disabled. */
+export function playNotificationSound(settings: SoundSettings) {
+  if (!settings.soundEnabled) return;
+  const audioCtx = getContext();
+  if (!audioCtx) return;
+  const v = Math.max(0, Math.min(1, settings.soundVolume)) * 0.35; // headroom so it's never jarring
+  packTones(audioCtx, settings, v);
+}
+
+/** Same pack, but with an extra low "heads up" tone underneath for Funny Mode. */
+export function playFunnySound(settings: SoundSettings) {
+  if (!settings.soundEnabled) return;
   const audioCtx = getContext();
   if (!audioCtx) return;
   const v = Math.max(0, Math.min(1, settings.soundVolume)) * 0.35;
   tone(audioCtx, 392, 0, 0.1, v, "triangle");
   tone(audioCtx, 330, 0.09, 0.16, v * 0.85, "triangle");
+  packTones(audioCtx, settings, v * 0.6);
+}
+
+/** A short, subtle blip for in-app system toasts (settings saved, etc). */
+export function playSystemSound(settings: SoundSettings) {
+  if (!settings.soundEnabled) return;
+  const audioCtx = getContext();
+  if (!audioCtx) return;
+  const v = Math.max(0, Math.min(1, settings.soundVolume)) * 0.3;
+  tone(audioCtx, 880, 0, 0.06, v, "sine");
 }

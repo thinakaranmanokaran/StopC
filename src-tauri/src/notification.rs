@@ -1,6 +1,4 @@
 use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
 
 use tauri::{AppHandle, LogicalPosition, Manager, Monitor};
 
@@ -10,29 +8,20 @@ const WINDOW_LABEL: &str = "notification";
 // Small offset from the screen edge; the rest of the visual spacing to
 // the toast itself comes from padding inside the (larger, transparent)
 // notification window — see src/notification-main.tsx's edge-aligned
-// flex wrapper. This two-layer approach lets the same fixed-size window
-// host both the compact copy toast and the taller funny-mode toast
-// without needing to resize the OS window on every show.
+// flex wrapper.
 const MARGIN: f64 = 8.0;
 
-/// Positions the notification window at the configured screen corner,
-/// shows it, and schedules it to hide again after an appropriate
-/// duration for the content kind ("copy" or "funny" — funny messages
-/// get a bit longer since there's more to read).
-pub fn show_notification(app: &AppHandle, state: &Arc<AppState>, kind: &str) {
+/// Positions the notification window at the configured screen corner
+/// and shows it. Hiding is NOT handled here — the frontend owns that
+/// (see `hide_notification_window` in commands.rs), because it needs
+/// to pause the countdown on hover and resume it on mouse-leave, which
+/// a fire-and-forget Rust-side timer can't react to.
+pub fn show_notification(app: &AppHandle, state: &Arc<AppState>, _kind: &str) {
     let Some(window) = app.get_webview_window(WINDOW_LABEL) else {
         return;
     };
 
-    let (position, duration_ms) = {
-        let settings = state.settings.lock().unwrap();
-        let duration = if kind == "funny" {
-            settings.duration_ms.max(3500)
-        } else {
-            settings.duration_ms
-        };
-        (settings.position.clone(), duration)
-    };
+    let position = state.settings.lock().unwrap().position.clone();
 
     if let Some(monitor) = window.current_monitor().ok().flatten() {
         let (x, y) = compute_position(&monitor, &position, &window);
@@ -40,17 +29,14 @@ pub fn show_notification(app: &AppHandle, state: &Arc<AppState>, kind: &str) {
     }
 
     let _ = window.show();
+}
 
-    // Hide it again after the duration. Spawning a thread per toast is
-    // cheap at this frequency; if two toasts land close together this
-    // just means the window may hide slightly early/late relative to
-    // the second one — visually harmless since the content itself is
-    // React-driven and already handles its own fade-out timing.
-    let window_clone = window.clone();
-    thread::spawn(move || {
-        thread::sleep(Duration::from_millis(duration_ms + 400)); // + exit animation buffer
-        let _ = window_clone.hide();
-    });
+/// Hides the notification window. Called by the frontend once its own
+/// (pausable) countdown actually finishes, or the toast is drag-dismissed.
+pub fn hide_notification(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window(WINDOW_LABEL) {
+        let _ = window.hide();
+    }
 }
 
 /// Repositions the notification window without showing/hiding it —

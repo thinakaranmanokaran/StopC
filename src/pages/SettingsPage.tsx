@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Container,
   Stack,
   Typography,
   Divider,
   Button,
-  Snackbar,
-  Alert,
   Box,
   Tooltip,
+  TextField,
 } from "@mui/material";
 import {
   Bell,
@@ -32,15 +31,19 @@ import {
   Gamepad2,
   Cloud,
   BadgeInfo,
+  UserRound,
+  ListOrdered,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSettingsStore, DEFAULT_SETTINGS } from "@/store/settingsStore";
 import type { StopCSettings } from "@/store/settingsStore";
 import { loadSettings, saveSettings, resetSettingsBackend } from "@/services/settingsService";
 import { playNotificationSound } from "@/services/soundPlayer";
+import { notify } from "@/services/toast";
 import M3Card from "@/components/M3Card";
 import ToggleRow from "@/components/ToggleRow";
 import M3SelectableGrid from "@/components/M3SelectableGrid";
+import { ThemePreview } from "@/components/settings/ThemePreview";
 
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
@@ -67,20 +70,24 @@ export default function SettingsPage() {
   const replaceSettings = useSettingsStore((s) => s.replaceSettings);
   const setSettings = useSettingsStore((s) => s.setSettings);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
-    open: false,
-    message: "",
-    severity: "success",
-  });
+  const [lastSaved, setLastSaved] = useState<StopCSettings>(settings);
 
   useEffect(() => {
     loadSettings()
-      .then(replaceSettings)
+      .then((loaded) => {
+        replaceSettings(loaded);
+        setLastSaved(loaded);
+      })
       .catch((e) => {
         console.error("[stopc] failed to load settings, using defaults:", e);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const hasUnsavedChanges = useMemo(
+    () => JSON.stringify(settings) !== JSON.stringify(lastSaved),
+    [settings, lastSaved]
+  );
 
   const update = <K extends keyof StopCSettings>(key: K, value: StopCSettings[K]) => {
     setSettings({ [key]: value } as Partial<StopCSettings>);
@@ -90,10 +97,11 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       await saveSettings(settings);
-      setToast({ open: true, message: "Settings saved", severity: "success" });
+      setLastSaved(settings);
+      notify("Settings Saved", "Your changes are now in effect.");
     } catch (e) {
       console.error("[stopc] failed to save settings:", e);
-      setToast({ open: true, message: "Couldn't save settings", severity: "error" });
+      notify("Couldn't Save Settings", "Something went wrong — check the console for details.");
     } finally {
       setSaving(false);
     }
@@ -103,15 +111,17 @@ export default function SettingsPage() {
     try {
       const defaults = await resetSettingsBackend();
       replaceSettings(defaults);
-      setToast({ open: true, message: "Reset to defaults", severity: "success" });
+      setLastSaved(defaults);
+      notify("Reset to Defaults", "All settings are back to their original values.");
     } catch (e) {
       console.error("[stopc] failed to reset settings, resetting locally:", e);
       replaceSettings(DEFAULT_SETTINGS);
+      setLastSaved(DEFAULT_SETTINGS);
     }
   };
 
   return (
-    <Container maxWidth="sm" sx={{ py: 6 }}>
+    <Container maxWidth="sm" sx={{ py: 6, pb: 14 }}>
       <Stack spacing={0}>
         <motion.div custom={0} initial="hidden" animate="visible" variants={fadeUp}>
           <Typography variant="h4" fontWeight={800} sx={{ mb: 3 }}>
@@ -119,8 +129,26 @@ export default function SettingsPage() {
           </Typography>
         </motion.div>
 
-        {/* Notifications */}
+        {/* Profile */}
         <motion.div custom={1} initial="hidden" animate="visible" variants={fadeUp}>
+          <M3Card>
+            <SectionHeader icon={<UserRound size={20} />} title="Profile" />
+            <SectionHeader/>
+            <TextField
+              label="Your name"
+              value={settings.userName}
+              onChange={(e) => update("userName", e.target.value)}
+              size="small"
+              fullWidth
+              placeholder="Not set"
+              helperText="Used to personalize the occasional Funny Mode message."
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "14px" } }}
+            />
+          </M3Card>
+        </motion.div>
+
+        {/* Notifications */}
+        <motion.div custom={2} initial="hidden" animate="visible" variants={fadeUp}>
           <M3Card>
             <SectionHeader icon={<Bell size={20} />} title="Notifications" />
             <Stack spacing={0}>
@@ -134,6 +162,11 @@ export default function SettingsPage() {
                 checked={settings.notifyOnImage}
                 onChange={(v) => update("notifyOnImage", v)}
               />
+              <ToggleRow
+                label="Show countdown bar on toast"
+                checked={settings.showCounter}
+                onChange={(v) => update("showCounter", v)}
+              />
             </Stack>
 
             <Divider sx={{ my: 2 }} />
@@ -141,6 +174,7 @@ export default function SettingsPage() {
             <Stack spacing={2.5}>
               <Box>
                 <Typography variant="body1" fontWeight={500} sx={{ mb: 1 }}>Theme</Typography>
+                <ThemePreview theme={settings.theme} opacity={settings.opacity} cornerRadius={settings.cornerRadius} />
                 <M3SelectableGrid
                   value={settings.theme}
                   onChange={(v) => update("theme", v as StopCSettings["theme"])}
@@ -245,7 +279,7 @@ export default function SettingsPage() {
         </motion.div>
 
         {/* Funny Mode */}
-        <motion.div custom={2} initial="hidden" animate="visible" variants={fadeUp}>
+        <motion.div custom={3} initial="hidden" animate="visible" variants={fadeUp}>
           <M3Card>
             <SectionHeader icon={<Sparkles size={20} />} title="Funny Mode" />
             <Stack spacing={0}>
@@ -262,6 +296,7 @@ export default function SettingsPage() {
             </Stack>
             <Box sx={{ mt: 2 }}>
               <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 1.5 }}>
+                <ListOrdered size={16} style={{ opacity: 0.6 }} />
                 <Typography variant="body1" fontWeight={500}>Funny Mode Threshold</Typography>
                 <Tooltip
                   arrow
@@ -294,7 +329,7 @@ export default function SettingsPage() {
         </motion.div>
 
         {/* Sound */}
-        <motion.div custom={3} initial="hidden" animate="visible" variants={fadeUp}>
+        <motion.div custom={4} initial="hidden" animate="visible" variants={fadeUp}>
           <M3Card>
             <SectionHeader icon={<Volume2 size={20} />} title="Sound" />
             <ToggleRow
@@ -307,14 +342,13 @@ export default function SettingsPage() {
               <M3SelectableGrid
                 value={settings.soundPack}
                 onChange={(v) => update("soundPack", v as StopCSettings["soundPack"])}
-                columns={3}
+                columns={4}
                 disabled={!settings.soundEnabled}
                 options={[
                   { value: "pop", label: "Pop", icon: <Music size={20} /> },
                   { value: "click", label: "Click", icon: <Zap size={20} /> },
                   { value: "bubble", label: "Bubble", icon: <Cloud size={20} /> },
                   { value: "retro", label: "Retro", icon: <Gamepad2 size={20} /> },
-                  { value: "mute", label: "Mute", icon: <Volume2 size={20} /> },
                 ]}
               />
             </Box>
@@ -324,7 +358,7 @@ export default function SettingsPage() {
                 value={settings.soundVolume}
                 onChange={(v) => update("soundVolume", v as number)}
                 columns={4}
-                disabled={!settings.soundEnabled || settings.soundPack === "mute"}
+                disabled={!settings.soundEnabled}
                 options={[
                   { value: 0.2, label: "Low" },
                   { value: 0.5, label: "Medium" },
@@ -337,7 +371,7 @@ export default function SettingsPage() {
               variant="outlined"
               size="small"
               onClick={() => playNotificationSound(settings)}
-              disabled={!settings.soundEnabled || settings.soundPack === "mute"}
+              disabled={!settings.soundEnabled}
               sx={{ mt: 2, borderRadius: "12px" }}
             >
               Test Sound
@@ -346,7 +380,7 @@ export default function SettingsPage() {
         </motion.div>
 
         {/* Startup */}
-        <motion.div custom={4} initial="hidden" animate="visible" variants={fadeUp}>
+        <motion.div custom={5} initial="hidden" animate="visible" variants={fadeUp}>
           <M3Card>
             <SectionHeader icon={<Power size={20} />} title="Startup" />
             <ToggleRow
@@ -356,35 +390,44 @@ export default function SettingsPage() {
             />
           </M3Card>
         </motion.div>
-
-        {/* Action Buttons */}
-        <motion.div custom={5} initial="hidden" animate="visible" variants={fadeUp}>
-          <Stack direction="row" spacing={1.5}>
-            <Button variant="contained" onClick={handleSave} disabled={saving} sx={{ flex: 1 }}>
-              {saving ? "Saving\u2026" : "Save Changes"}
-            </Button>
-            <Button
-              variant="outlined"
-              color="inherit"
-              startIcon={<RotateCcw size={16} />}
-              onClick={handleReset}
-            >
-              Reset to Defaults
-            </Button>
-          </Stack>
-        </motion.div>
       </Stack>
 
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={2500}
-        onClose={() => setToast((t) => ({ ...t, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      {/* Sticky action bar */}
+      <Box
+        sx={{
+          position: "fixed",
+          bottom: 0,
+          left: { xs: 0, md: 220 },
+          right: 0,
+          px: 3,
+          py: 2,
+          display: "flex",
+          justifyContent: "center",
+          background: "linear-gradient(to top, var(--mui-palette-background-default, transparent) 60%, transparent)",
+          backdropFilter: "blur(8px)",
+          zIndex: 10,
+        }}
       >
-        <Alert severity={toast.severity} variant="filled" sx={{ width: "100%" }}>
-          {toast.message}
-        </Alert>
-      </Snackbar>
+        <Stack direction="row" spacing={1.5} sx={{ width: "100%", maxWidth: 600 }}>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={saving || !hasUnsavedChanges}
+            sx={{ flex: 1, borderRadius: "14px" }}
+          >
+            {saving ? "Saving\u2026" : hasUnsavedChanges ? "Save Changes" : "Saved"}
+          </Button>
+          <Button
+            variant="outlined"
+            color="inherit"
+            startIcon={<RotateCcw size={16} />}
+            onClick={handleReset}
+            sx={{ borderRadius: "14px" }}
+          >
+            Reset to Defaults
+          </Button>
+        </Stack>
+      </Box>
     </Container>
   );
 }

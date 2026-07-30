@@ -4,6 +4,11 @@ import { ThemeProvider, CssBaseline } from "@mui/material";
 import App from "@/App";
 import { darkTheme, lightTheme } from "@/theme/theme";
 import "@/assets/fonts/fonts.css";
+import "@/styles/native-app.css";
+
+// Suppress the browser-style right-click menu app-wide — a desktop app
+// doesn't offer "Inspect"/"Reload", it has its own context (or none).
+document.addEventListener("contextmenu", (e) => e.preventDefault());
 
 type Mode = "light" | "dark";
 

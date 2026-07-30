@@ -1,0 +1,42 @@
+/* Makes the dashboard window feel like a native app rather than a
+   webpage: no browser-style text selection sprawl, no right-click
+   "Inspect"/"Reload" menu, and a slim scrollbar instead of the OS
+   default. Inputs/textareas explicitly opt back into selection —
+   users still need to select and edit their own text there. */
+
+* {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.35);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.55);
+  background-clip: content-box;
+}
+
+body {
+  overscroll-behavior: none;
+}

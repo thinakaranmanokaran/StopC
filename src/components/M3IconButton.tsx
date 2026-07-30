@@ -1,4 +1,5 @@
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, useTheme } from "@mui/material";
+import { cardShadow } from "@/utils/elevation";
 
 interface M3IconButtonProps {
   icon: React.ReactNode;
@@ -7,6 +8,7 @@ interface M3IconButtonProps {
 }
 
 export default function M3IconButton({ icon, label, onClick }: M3IconButtonProps) {
+  const theme = useTheme();
   return (
     <Box
       onClick={onClick}
@@ -32,9 +34,9 @@ export default function M3IconButton({ icon, label, onClick }: M3IconButtonProps
           bgcolor: "secondaryContainer",
           color: "onSecondaryContainer",
           transition: "box-shadow 150ms",
-          boxShadow: "0px 1px 2px rgba(0,0,0,0.1), 0px 1px 3px 1px rgba(0,0,0,0.08)",
+          boxShadow: cardShadow(theme),
           "&:hover": {
-            boxShadow: "0px 1px 2px rgba(0,0,0,0.12), 0px 2px 6px 2px rgba(0,0,0,0.08)",
+            boxShadow: cardShadow(theme, "hover"),
           },
         }}
       >

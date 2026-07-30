@@ -11,8 +11,9 @@
     "core:window:allow-hide",
     "core:event:default",
     "clipboard-manager:default",
+    "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-read-text",
     "notification:default",
-    "autostart:default",
-    "store:default"
+    "autostart:default"
   ]
 }

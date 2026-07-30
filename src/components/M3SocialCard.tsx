@@ -1,4 +1,5 @@
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, useTheme } from "@mui/material";
+import { cardShadow } from "@/utils/elevation";
 
 interface M3SocialCardProps {
   icon: React.ReactNode;
@@ -7,6 +8,7 @@ interface M3SocialCardProps {
 }
 
 export default function M3SocialCard({ icon, label, url }: M3SocialCardProps) {
+  const theme = useTheme();
   const handleClick = () => {
     window.open(url, "_blank", "noopener,noreferrer");
   };
@@ -27,10 +29,10 @@ export default function M3SocialCard({ icon, label, url }: M3SocialCardProps) {
         bgcolor: "background.paper",
         cursor: "pointer",
         transition: "all 150ms",
-        boxShadow: "0px 1px 2px rgba(0,0,0,0.1), 0px 1px 3px 1px rgba(0,0,0,0.08)",
+        boxShadow: cardShadow(theme),
         "&:hover": {
           borderColor: "primary.main",
-          boxShadow: "0px 1px 2px rgba(0,0,0,0.12), 0px 2px 6px 2px rgba(0,0,0,0.08)",
+          boxShadow: cardShadow(theme, "hover"),
           transform: "translateY(-1px)",
         },
         "&:active": { transform: "translateY(0)" },

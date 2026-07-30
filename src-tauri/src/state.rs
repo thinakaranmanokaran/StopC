@@ -31,7 +31,18 @@ impl AppState {
 }
 
 /// Mirrors `StopCSettings` on the frontend (src/store/settingsStore.ts).
-/// Persisted to disk via tauri-plugin-store at settings.json.
+/// The frontend's localStorage is the actual persistence layer (see
+/// src/services/settingsService.ts) — this in-memory copy exists so
+/// Rust's own background threads (clipboard poller, Funny Mode key
+/// listener) can read current settings synchronously without crossing
+/// into a webview's localStorage, and so it can broadcast
+/// "settings://updated" to keep every window's copy in sync.
+///
+/// IMPORTANT: every field here must have a matching camelCase field in
+/// StopCSettings on the frontend, or a round-trip through this struct
+/// (e.g. the settings://updated broadcast after a save) will silently
+/// drop it from the frontend's copy even though it's still safe in
+/// localStorage.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -56,11 +67,17 @@ pub struct Settings {
     pub notify_on_text: bool,
     /// Show a toast when an image copy is detected.
     pub notify_on_image: bool,
+    /// Show the countdown progress bar along the bottom of the toast.
+    pub show_counter: bool,
+    /// Set via the first-run name screen; editable in Settings. Empty
+    /// string means "not set" — Rust doesn't otherwise use this value,
+    /// it's purely carried through for cross-window sync.
+    pub user_name: String,
 }
 
-// `#[serde(default)]` on the struct above means any field missing from a
-// saved/older settings.json (e.g. after adding a new field) is silently
-// filled from Default::default() below, instead of failing the whole
+// `#[serde(default)]` on the struct above means any field missing from
+// a payload (e.g. an older saved settings shape) is silently filled
+// from Default::default() below, instead of failing the whole
 // deserialization. Keep this in sync with settingsStore.ts.
 impl Default for Settings {
     fn default() -> Self {
@@ -81,6 +98,8 @@ impl Default for Settings {
             poll_interval_ms: 300,
             notify_on_text: true,
             notify_on_image: true,
+            show_counter: true,
+            user_name: String::new(),
         }
     }
 }

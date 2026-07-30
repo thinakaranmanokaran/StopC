@@ -1,10 +1,12 @@
-import { Paper, Typography, type PaperProps, type SxProps, type Theme } from "@mui/material";
+import { Paper, Typography, useTheme, type PaperProps, type SxProps, type Theme } from "@mui/material";
+import { cardShadow } from "@/utils/elevation";
 
 interface M3CardProps extends Omit<PaperProps, "title"> {
   title?: string;
 }
 
 export default function M3Card({ title, children, sx, ...rest }: M3CardProps) {
+  const theme = useTheme();
   return (
     <Paper
       elevation={0}
@@ -12,7 +14,7 @@ export default function M3Card({ title, children, sx, ...rest }: M3CardProps) {
         p: 3,
         mb: 3,
         borderRadius: "28px",
-        boxShadow: "0px 1px 2px rgba(0,0,0,0.1), 0px 1px 3px 1px rgba(0,0,0,0.08)",
+        boxShadow: cardShadow(theme),
         ...sx,
       } as SxProps<Theme>}
       {...rest}

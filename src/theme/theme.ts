@@ -1,8 +1,26 @@
 import { createTheme, type ThemeOptions } from "@mui/material";
 import { M3_LIGHT, M3_DARK } from "./m3Colors";
 
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function buildTheme(mode: "light" | "dark"): ReturnType<typeof createTheme> {
   const m3 = mode === "light" ? M3_LIGHT : M3_DARK;
+  const isLight = mode === "light";
+
+  // A pure-black shadow at low opacity reads fine in dark mode (it's
+  // already darker than everything around it) but looks flat and
+  // characterless in light mode — an M3-correct-but-lifeless "just
+  // inverted dark" impression. Tinting the shadow with the primary hue
+  // gives light mode the same kind of soft, colored depth Material 3
+  // actually intends ("surface tint"), rather than a plain drop shadow.
+  const shadowTint = isLight ? hexToRgba(m3.primary, 0.14) : "rgba(0,0,0,0.1)";
+  const shadowTintStrong = isLight ? hexToRgba(m3.primary, 0.18) : "rgba(0,0,0,0.12)";
 
   const palette: ThemeOptions["palette"] = {
     mode,
@@ -44,7 +62,7 @@ function buildTheme(mode: "light" | "dark"): ReturnType<typeof createTheme> {
             borderRadius: 28,
           },
           elevation1: {
-            boxShadow: "0px 1px 2px rgba(0,0,0,0.1), 0px 1px 3px 1px rgba(0,0,0,0.08)",
+            boxShadow: `0px 1px 2px ${shadowTint}, 0px 1px 3px 1px ${shadowTintStrong}`,
           },
         },
       },
@@ -58,9 +76,9 @@ function buildTheme(mode: "light" | "dark"): ReturnType<typeof createTheme> {
             fontSize: "1rem",
           },
           contained: {
-            boxShadow: "0px 1px 2px rgba(0,0,0,0.1), 0px 1px 3px 1px rgba(0,0,0,0.08)",
+            boxShadow: `0px 1px 2px ${shadowTint}, 0px 1px 3px 1px ${shadowTintStrong}`,
             "&:hover": {
-              boxShadow: "0px 1px 2px rgba(0,0,0,0.12), 0px 2px 6px 2px rgba(0,0,0,0.08)",
+              boxShadow: `0px 1px 2px ${shadowTintStrong}, 0px 2px 6px 2px ${shadowTint}`,
             },
           },
           outlined: {
@@ -107,6 +125,13 @@ function buildTheme(mode: "light" | "dark"): ReturnType<typeof createTheme> {
       },
       MuiCssBaseline: {
         styleOverrides: {
+          body: isLight
+            ? {
+                backgroundColor: m3.background,
+                backgroundImage: `radial-gradient(circle at 15% 0%, ${hexToRgba(m3.primaryContainer, 0.35)} 0%, transparent 45%), radial-gradient(circle at 100% 20%, ${hexToRgba(m3.tertiaryContainer, 0.25)} 0%, transparent 40%)`,
+                backgroundAttachment: "fixed",
+              }
+            : undefined,
           ":root": {
             "--m3-primary": m3.primary,
             "--m3-on-primary": m3.onPrimary,

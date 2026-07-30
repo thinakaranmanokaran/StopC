@@ -32,7 +32,7 @@ export interface StopCSettings {
   funnyModeEnabled: boolean;
   mascotsEnabled: boolean;
   soundEnabled: boolean;
-  soundPack: "pop" | "click" | "bubble" | "retro" | "mute";
+  soundPack: "pop" | "click" | "bubble" | "retro";
   soundVolume: number;
   autoStart: boolean;
   funnyModeThreshold: number;
@@ -41,6 +41,10 @@ export interface StopCSettings {
   notifyOnText: boolean;
   /** Show a toast when an image copy is detected. */
   notifyOnImage: boolean;
+  /** Show the countdown progress bar along the bottom of the toast. */
+  showCounter: boolean;
+  /** Set once via the first-run name screen; editable afterward in Settings. */
+  userName: string;
 }
 
 export const DEFAULT_SETTINGS: StopCSettings = {
@@ -60,11 +64,13 @@ export const DEFAULT_SETTINGS: StopCSettings = {
   pollIntervalMs: 300,
   notifyOnText: true,
   notifyOnImage: true,
+  showCounter: true,
+  userName: "",
 };
 
 interface SettingsState {
   settings: StopCSettings;
-  /** True once settings have been loaded from the Rust backend at least once. */
+  /** True once settings have been loaded (from localStorage/backend) at least once. */
   hydrated: boolean;
   setSettings: (partial: Partial<StopCSettings>) => void;
   replaceSettings: (settings: StopCSettings) => void;
@@ -77,5 +83,5 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setSettings: (partial) =>
     set((state) => ({ settings: { ...state.settings, ...partial } })),
   replaceSettings: (settings) => set({ settings, hydrated: true }),
-  resetSettings: () => set({ settings: DEFAULT_SETTINGS }),
+  resetSettings: () => set({ settings: DEFAULT_SETTINGS, hydrated: true }),
 }));

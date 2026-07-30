@@ -15,7 +15,99 @@ copy lands, so you stop double- and triple-pressing Ctrl+C out of doubt.
 
 ## Changelog
 
-### This pass (themes, sound, Funny Mode, mascots, dashboard, background-run)
+### This pass (hover-pause, drag-close, first-run flow, localStorage settings, and 13 other fixes)
+
+1. **Sound now plays for every toast kind, not just copy.** Consolidated
+   copy/funny/system sound into one shared code path
+   (`soundPlayer.ts`) so there's no longer any asymmetry between how
+   the different toast kinds are handled.
+2. **Hover-to-hold.** The notification's dismiss timer is now a
+   pausable ref-based countdown — hovering pauses both the timer and
+   the visual countdown bar, resuming with the correct remaining time
+   on mouse-leave, instead of a fire-and-forget `setTimeout`.
+3. **Elastic drag-to-close.** Drag the toast any direction past ~90px
+   and it dismisses; release before that and it snaps back
+   (`dragElastic` + `dragSnapToOrigin`). Along the way, fixed a real
+   structural bug in the first draft: Framer Motion's `AnimatePresence`
+   needs the keyed animated element as a *direct* child to fire exit
+   animations — it was nested inside a component that internally
+   toggled null, so exits silently never played.
+4. **First-launch-only dashboard.** Added `tauri-plugin-single-instance`
+   (clicking the icon while already running now refocuses the existing
+   window instead of doing nothing) plus a `--autostart` marker
+   injected only into the OS autostart registration, so the app can
+   tell "silently launched at login" apart from "a human clicked the
+   icon" — the two cases that previously couldn't be distinguished.
+5. **Real cat photos:** tried fetching from the cataas.com URL
+   provided and confirmed this environment's fetch tool can't retrieve
+   binary image content at all — there was no path to downloading
+   actual photos into the project here. Built the honest alternative
+   instead: the original SVG cat art stays as the always-available,
+   zero-weight default, and `scripts/fetch-cat-images.mjs` is a Node
+   script *you* run locally (with real internet) to pull photos from
+   cataas.com into `src/assets/cats/<mood>/`. `CatIllustration.tsx`
+   uses Vite's `import.meta.glob` to discover them at build time (so
+   there's still no runtime network dependency) and falls back to SVG
+   for any mood with no downloaded photos.
+6. **Notification header simplified** to just the app name/logo,
+   removed "Funny Mode · Copy #N".
+7. **User name:** first-run capture screen, editable in Settings,
+   avatar initial shown top-right on the Dashboard, and a handful of
+   funny messages personalize via a `{name}` template token (Rust
+   side) that the frontend substitutes or cleanly removes.
+8. **Settings persistence moved to localStorage** as the source of
+   truth (`settingsService.ts`); Rust keeps an in-memory mirror synced
+   purely so its background threads can read current settings
+   synchronously. Removed the never-actually-wired-up
+   `tauri-plugin-store` dependency (both the Rust crate and the JS
+   package) since it wasn't doing anything.
+9. **Countdown-bar visibility is now a Settings toggle.**
+10. **In-app confirmations use StopC's own toast**, not a separate MUI
+    Snackbar — Settings save/reset now emit an `app://toast` event
+    the notification window renders through the same pipeline.
+11. **Live theme preview** shown above the theme picker in Settings.
+12. **Sticky save bar** pinned to the bottom of the Settings page,
+    disabled when there are no unsaved changes (draft vs. last-saved
+    comparison).
+13. **Dashboard simplified**: removed the copy counter, background-run
+    disclaimer, Recent Activity list, and the redundant nav icon row;
+    expanded "Try It Out" with quick-fill example chips; added a
+    `navigator.clipboard` fallback if the Tauri plugin call fails.
+14. **Removed "Mute" from the sound pack list** — the Enable Sound
+    toggle already covers that.
+15. **Native-app feel**: global CSS disables text selection outside
+    inputs/textareas, restyles the scrollbar, and suppresses the
+    browser-style right-click context menu.
+16. **Light theme redesigned.** The M3 color tokens themselves were
+    already correct (not actually "inverted dark"), but `M3Card`,
+    `M3IconButton`, and `M3SocialCard` all hardcoded a flat black
+    shadow inline — bypassing the theme entirely — which is what made
+    light mode look flat. Added a shared `cardShadow()` helper that
+    tints shadows with the primary color in light mode (an M3
+    "surface tint" effect) plus a soft gradient body background.
+17. **`src/config/app.config.json`** — app name, slogan, logo URL/alt
+    text, all with typed fallbacks (`appConfig.ts`) — wired into the
+    nav header, toast header, theme preview, About page, and first-run
+    screen so rebranding doesn't require touching component code.
+
+**Bugs found while auditing, unrelated to the list above but fixed
+along the way:**
+- `state.rs`'s `Settings` struct was missing the new `userName`/
+  `showCounter` fields entirely. Since Rust re-broadcasts its own
+  settings object after every save, this would have silently wiped
+  both fields from every window's in-memory copy on the next sync
+  (while leaving them intact in localStorage) — a subtle
+  works-until-it-doesn't bug.
+- `src/vite-env.d.ts` (the standard Vite client type reference) never
+  existed in this project. `import.meta.glob` (used for the cat-photo
+  discovery in #5) would have failed a real `tsc` type-check without
+  it, even though it's invisible to `transpileModule`-based syntax
+  checks.
+- Two Cargo dependencies (`once_cell`, `chrono`) were declared but
+  never actually used anywhere in the Rust source — pure dead weight.
+  Removed.
+
+### Earlier pass (themes, sound, Funny Mode, mascots, dashboard, background-run)
 
 ⚠️ **`src-tauri` was missing from the uploaded project again**, so the
 Rust backend below was reconstructed from the last known-good version
@@ -293,6 +385,19 @@ these are the spots most likely to need a small adjustment:
    time you build. If it doesn't compile, the fix is almost always
    just adjusting these two calls — the rest of the startup-notification
    logic doesn't depend on the exact API shape.
+5. **`tauri_plugin_single_instance::init`'s callback signature** in
+   `main.rs` — `|app, _argv, _cwd|` is correct for the plugin's early-2.x
+   API; if it doesn't compile, check the plugin's current callback
+   signature (parameter count/order occasionally changes between
+   versions).
+6. **Hover-to-pause and drag-to-close depend on the notification
+   window actually receiving mouse events** despite being created with
+   `focus: false` (so it doesn't steal focus from whatever app you're
+   using). This *should* work — hover/drag detection doesn't require
+   keyboard focus, only the cursor being over the window's screen
+   region — but it's untested on real hardware in this pass, so treat
+   it as the first thing to verify if dragging/hovering feels
+   unresponsive.
 
 None of these affect the overall architecture — they're the normal
 "first compile after scaffolding" friction of a fast-moving ecosystem.

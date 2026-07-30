@@ -12,9 +12,14 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
-import { LayoutDashboard, Settings as SettingsIcon, Code2, ClipboardCheck, Sun, Moon, Info } from "lucide-react";
+import { LayoutDashboard, Settings as SettingsIcon, Code2, Sun, Moon, Info } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import { useThemeMode } from "@/main";
+import { AppLogo } from "@/components/AppLogo";
+import { appConfig } from "@/config/appConfig";
+import { NameCaptureScreen } from "@/components/NameCaptureScreen";
+import { useSettingsStore } from "@/store/settingsStore";
+import { loadSettings, saveSettings } from "@/services/settingsService";
 import Dashboard from "@/pages/Dashboard";
 import SettingsPage from "@/pages/SettingsPage";
 import AboutPage from "@/pages/AboutPage";
@@ -23,6 +28,7 @@ import DeveloperPage from "@/pages/DeveloperPage";
 type Page = "dashboard" | "settings" | "about" | "developer";
 
 const DRAWER_WIDTH = 220;
+const NAME_PROMPTED_KEY = "stopc:namePrompted";
 
 const NAV_ITEMS: { id: Page; label: string; icon: React.ReactNode }[] = [
   { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
@@ -37,6 +43,30 @@ const BOTTOM_NAV_ITEMS: { id: Page; label: string; icon: React.ReactNode }[] = [
 export default function App() {
   const [page, setPage] = useState<Page>("dashboard");
   const { mode, toggleMode } = useThemeMode();
+
+  const settings = useSettingsStore((s) => s.settings);
+  const hydrated = useSettingsStore((s) => s.hydrated);
+  const replaceSettings = useSettingsStore((s) => s.replaceSettings);
+  const setSettings = useSettingsStore((s) => s.setSettings);
+  const [namePrompted, setNamePrompted] = useState(true); // assume true until checked, to avoid a flash
+
+  // Load settings once at app root so every page (and the top-right
+  // avatar) has them immediately, without each page re-fetching.
+  useEffect(() => {
+    loadSettings()
+      .then(replaceSettings)
+      .finally(() => {
+        setNamePrompted(window.localStorage.getItem(NAME_PROMPTED_KEY) === "1");
+      });
+
+    const unlistenPromise = listen<typeof settings>("settings://updated", (event) => {
+      replaceSettings(event.payload);
+    });
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const unlistenPromise = listen<string>("tray://navigate", (event) => {
@@ -65,6 +95,18 @@ export default function App() {
     document.querySelector("main")?.scrollTo({ top: 0 });
   }, [page]);
 
+  const handleNameSubmit = async (name: string) => {
+    window.localStorage.setItem(NAME_PROMPTED_KEY, "1");
+    setNamePrompted(true);
+    const next = { ...settings, userName: name };
+    setSettings({ userName: name });
+    try {
+      await saveSettings(next);
+    } catch (e) {
+      console.error("[stopc] failed to save name:", e);
+    }
+  };
+
   const renderNavItems = (items: { id: Page; label: string; icon: React.ReactNode }[]) =>
     items.map((item) => (
       <ListItemButton
@@ -77,6 +119,10 @@ export default function App() {
         <ListItemText primary={item.label} />
       </ListItemButton>
     ));
+
+  if (hydrated && !namePrompted) {
+    return <NameCaptureScreen onSubmit={handleNameSubmit} />;
+  }
 
   return (
     <Box sx={{ display: "flex", height: "100vh" }}>
@@ -93,9 +139,11 @@ export default function App() {
         }}
       >
         <Toolbar sx={{ px: 2.5, py: 1 }}>
-          <ClipboardCheck size={22} style={{ marginRight: 10 }} />
+          <Box sx={{ mr: 1.25, display: "flex" }}>
+            <AppLogo size={22} />
+          </Box>
           <Typography variant="subtitle1" fontWeight={800} sx={{ flex: 1 }}>
-            StopC
+            {appConfig.appName}
           </Typography>
           <Tooltip title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"} arrow>
             <IconButton size="small" onClick={toggleMode} sx={{ color: "text.secondary" }}>

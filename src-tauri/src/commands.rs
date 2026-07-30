@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tauri::{AppHandle, Emitter, State};
 
-use crate::notification::position_notification_window;
+use crate::notification::{hide_notification, position_notification_window};
 use crate::state::{AppState, Settings};
 
 #[tauri::command]
@@ -22,10 +22,11 @@ pub fn save_settings(
         *guard = settings.clone();
     }
     position_notification_window(&app, &position);
-    // Broadcast to every window (notably the notification window, which
-    // has its own isolated JS context and otherwise never learns about
-    // a theme/sound/position change made from the Settings page until
-    // the app restarts).
+    // Broadcast to every window. The frontend's source of truth is
+    // localStorage (shared across windows where the OS webview
+    // supports it via the `storage` event), but this Tauri-level
+    // broadcast is the one guaranteed to work regardless of webview
+    // storage-partitioning quirks across platforms.
     let _ = app.emit("settings://updated", settings);
     Ok(())
 }
@@ -36,4 +37,12 @@ pub fn reset_settings(app: AppHandle, state: State<Arc<AppState>>) -> Settings {
     *state.settings.lock().unwrap() = defaults.clone();
     let _ = app.emit("settings://updated", defaults.clone());
     defaults
+}
+
+/// The frontend calls this once its own (pausable-on-hover) countdown
+/// finishes, or when a toast is drag-dismissed — see notification.rs
+/// for why hiding isn't a fire-and-forget Rust-side timer anymore.
+#[tauri::command]
+pub fn hide_notification_window(app: AppHandle) {
+    hide_notification(&app);
 }

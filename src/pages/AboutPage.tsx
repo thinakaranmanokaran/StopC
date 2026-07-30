@@ -1,7 +1,10 @@
-import { Container, Stack, Typography, Box, Divider } from "@mui/material";
-import { ClipboardCheck, Check, Package, Scale, Layers } from "lucide-react";
+import { Container, Stack, Typography, Box, Divider, useTheme } from "@mui/material";
+import { Check, Package, Scale, Layers } from "lucide-react";
 import { motion } from "framer-motion";
 import M3Card from "@/components/M3Card";
+import { AppLogo } from "@/components/AppLogo";
+import { appConfig } from "@/config/appConfig";
+import { cardShadow } from "@/utils/elevation";
 
 const APP_VERSION = "0.1.0";
 
@@ -24,6 +27,7 @@ const fadeUp = {
 };
 
 export default function AboutPage() {
+  const theme = useTheme();
   return (
     <Container maxWidth="sm" sx={{ py: 6 }}>
       <Stack spacing={0}>
@@ -40,17 +44,17 @@ export default function AboutPage() {
                 justifyContent: "center",
                 bgcolor: "primaryContainer",
                 color: "onPrimaryContainer",
-                boxShadow: "0px 1px 2px rgba(0,0,0,0.12), 0px 2px 6px 2px rgba(0,0,0,0.08)",
+                boxShadow: cardShadow(theme),
                 mb: 2,
               }}
             >
-              <ClipboardCheck size={48} />
+              <AppLogo size={48} />
             </Box>
             <Typography variant="h4" fontWeight={800} textAlign="center">
-              StopC
+              {appConfig.appName}
             </Typography>
             <Typography variant="body1" color="text.secondary" textAlign="center" sx={{ mt: 0.5 }}>
-              Copy once. Trust forever.
+              {appConfig.slogan}
             </Typography>
             <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mt: 1 }}>
               Version {APP_VERSION}
@@ -62,7 +66,7 @@ export default function AboutPage() {
         <motion.div custom={1} initial="hidden" animate="visible" variants={fadeUp}>
           <Box sx={{ px: 1, mb: 3 }}>
             <Typography variant="body1" color="text.secondary" lineHeight={1.7}>
-              StopC is a clipboard confidence app — not a clipboard manager. It
+              {appConfig.appName} is a clipboard confidence app — not a clipboard manager. It
               watches your clipboard and gives you an instant, beautiful
               confirmation the moment a copy lands, so you never have to press
               Ctrl+C twice out of doubt again.

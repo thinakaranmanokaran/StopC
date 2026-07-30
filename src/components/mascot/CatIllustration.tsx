@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { Mood } from "@/utils/mood";
 import { MOOD_ACCENT } from "@/utils/mood";
 
@@ -6,14 +7,62 @@ interface Props {
   size?: number;
 }
 
+// Vite statically discovers any images the developer has downloaded via
+// `scripts/fetch-cat-images.mjs` (from cataas.com) into
+// src/assets/cats/<mood>/*.jpg at BUILD time — this glob runs once
+// during bundling, not at runtime, so there's no network dependency or
+// missing-folder error even if the script was never run (the glob just
+// resolves to an empty object).
+const PHOTO_MODULES = import.meta.glob("/src/assets/cats/*/*.{jpg,jpeg,png,webp}", {
+  eager: true,
+  import: "default",
+}) as Record<string, string>;
+
+const PHOTOS_BY_MOOD: Partial<Record<Mood, string[]>> = {};
+for (const [filePath, url] of Object.entries(PHOTO_MODULES)) {
+  const match = filePath.match(/\/cats\/([a-z]+)\//);
+  const mood = match?.[1] as Mood | undefined;
+  if (!mood) continue;
+  (PHOTOS_BY_MOOD[mood] ??= []).push(url);
+}
+
 /**
- * A small original cat-face illustration per mood. Deliberately simple
- * geometric shapes (circle head, triangle ears, path-based features) —
- * this is original artwork drawn directly in SVG, not a reproduction of
- * any existing meme template or copyrighted character, which keeps
- * Funny Mode's "relatable cat reaction" idea safe to ship.
+ * Prefers a real downloaded cat photo for this mood if one exists;
+ * otherwise falls back to the original hand-coded SVG illustration
+ * below. Either way this never touches the network — real photos are
+ * bundled at build time, not fetched live (see the glob above and
+ * scripts/fetch-cat-images.mjs for why).
  */
 export function CatIllustration({ mood, size = 96 }: Props) {
+  const photoUrl = useMemo(() => {
+    const photos = PHOTOS_BY_MOOD[mood];
+    if (!photos || photos.length === 0) return null;
+    return photos[Math.floor(Math.random() * photos.length)];
+  }, [mood]);
+
+  if (photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt={`A cat looking ${mood}`}
+        width={size}
+        height={size}
+        style={{ borderRadius: "14px", objectFit: "cover", display: "block" }}
+      />
+    );
+  }
+
+  return <CatSvg mood={mood} size={size} />;
+}
+
+/**
+ * The always-available fallback: deliberately simple geometric shapes
+ * (circle head, triangle ears, path-based features) — this is original
+ * artwork drawn directly in SVG, not a reproduction of any existing
+ * meme template or copyrighted character, which keeps Funny Mode's
+ * "relatable cat reaction" idea safe to ship with zero download weight.
+ */
+function CatSvg({ mood, size = 96 }: Props) {
   const accent = MOOD_ACCENT[mood];
   const fur = "#2A2438";
   const furLight = "#3A3350";
