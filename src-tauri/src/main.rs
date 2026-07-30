@@ -137,6 +137,7 @@ fn main() {
             commands::get_settings,
             commands::save_settings,
             commands::reset_settings,
+            commands::record_copy_attempt,
             commands::hide_notification_window,
         ])
         .run(tauri::generate_context!())

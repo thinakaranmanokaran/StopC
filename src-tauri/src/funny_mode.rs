@@ -7,7 +7,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 use crate::funny_messages::{random_message, Mood};
-use crate::state::AppState;
+use crate::state::{AppState, Settings};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,6 +71,46 @@ pub fn spawn_key_listener(app: AppHandle, state: Arc<AppState>) {
     });
 }
 
+fn evaluate_repeat_attempt(previous_count: u32, threshold: u32) -> (u32, bool) {
+    let next_count = previous_count + 1;
+    (next_count, next_count >= threshold)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::evaluate_repeat_attempt;
+
+    #[test]
+    fn triggers_when_threshold_is_hit() {
+        let (count, should_trigger) = evaluate_repeat_attempt(0, 2);
+        assert_eq!(count, 1);
+        assert!(!should_trigger);
+
+        let (count, should_trigger) = evaluate_repeat_attempt(1, 2);
+        assert_eq!(count, 2);
+        assert!(should_trigger);
+    }
+}
+
+pub(crate) fn handle_repeat_attempt(app: &AppHandle, state: &Arc<AppState>, settings: &Settings) {
+    let previous_count = state.repeat_count.fetch_add(1, Ordering::SeqCst);
+    let (count, should_trigger) = evaluate_repeat_attempt(previous_count, settings.funny_mode_threshold);
+
+    if should_trigger {
+        let (message, mood) = random_message();
+        let payload = FunnyModeEvent {
+            repeat_count: count,
+            message: message.to_string(),
+            mood,
+        };
+        if let Err(e) = app.emit("funny-mode://triggered", payload) {
+            eprintln!("[stopc] failed to emit funny-mode event: {e}");
+        }
+        crate::notification::show_notification(app, state, "funny");
+        state.repeat_count.store(0, Ordering::SeqCst);
+    }
+}
+
 fn on_ctrl_c(app: &AppHandle, state: &Arc<AppState>) {
     let settings = state.settings.lock().unwrap().clone();
     if !settings.funny_mode_enabled {
@@ -85,21 +125,5 @@ fn on_ctrl_c(app: &AppHandle, state: &Arc<AppState>) {
     let settle = std::cmp::min(settings.poll_interval_ms + 50, 500);
     thread::sleep(std::time::Duration::from_millis(settle));
 
-    let count = state.repeat_count.fetch_add(1, Ordering::SeqCst) + 1;
-
-    if count >= settings.funny_mode_threshold {
-        let (message, mood) = random_message();
-        let payload = FunnyModeEvent {
-            repeat_count: count,
-            message: message.to_string(),
-            mood,
-        };
-        if let Err(e) = app.emit("funny-mode://triggered", payload) {
-            eprintln!("[stopc] failed to emit funny-mode event: {e}");
-        }
-        crate::notification::show_notification(app, state, "funny");
-        // Reset so the next few presses build back up rather than
-        // spamming a popup on every single subsequent press.
-        state.repeat_count.store(0, Ordering::SeqCst);
-    }
+    handle_repeat_attempt(app, state, &settings);
 }

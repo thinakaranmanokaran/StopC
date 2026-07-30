@@ -43,6 +43,23 @@ pub fn reset_settings(app: AppHandle, state: State<Arc<AppState>>) -> Settings {
 /// finishes, or when a toast is drag-dismissed — see notification.rs
 /// for why hiding isn't a fire-and-forget Rust-side timer anymore.
 #[tauri::command]
+pub fn record_copy_attempt(app: AppHandle, state: State<Arc<AppState>>) -> Result<(), String> {
+    let settings = state
+        .inner()
+        .settings
+        .lock()
+        .map_err(|e| e.to_string())?
+        .clone();
+
+    if !settings.funny_mode_enabled {
+        return Ok(());
+    }
+
+    crate::funny_mode::handle_repeat_attempt(&app, state.inner(), &settings);
+    Ok(())
+}
+
+#[tauri::command]
 pub fn hide_notification_window(app: AppHandle) {
     hide_notification(&app);
 }

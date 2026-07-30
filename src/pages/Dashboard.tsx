@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Box, Container, Stack, Typography, TextField, Button, Chip, Avatar } from "@mui/material";
-import { Copy, Check, Mail, MapPin, KeyRound, FileText } from "lucide-react";
+import { Box, Container, Stack, Typography, TextField, Button, Avatar } from "@mui/material";
+import { Copy, Check, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { invoke } from "@tauri-apps/api/core";
 import { notify } from "@/services/toast";
 import { useSettingsStore } from "@/store/settingsStore";
 import { AppLogo } from "@/components/AppLogo";
@@ -34,6 +35,11 @@ export default function Dashboard() {
   const handleTestCopy = async () => {
     try {
       await writeText(testText);
+      try {
+        await invoke("record_copy_attempt");
+      } catch (commandError) {
+        console.warn("[stopc] failed to record test copy attempt:", commandError);
+      }
       setJustCopied(true);
       setTimeout(() => setJustCopied(false), 1500);
     } catch (primaryError) {
