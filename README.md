@@ -420,6 +420,10 @@ None of these affect the overall architecture — they're the normal
 - [ ] Unit/integration/clipboard/notification/performance test suites
 - [ ] CI matrix building all three installer targets
 
+## Author
+
+**Thinakaran Manokaran** — [thinakaran.dev](https://thinakaran.dev/)
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).

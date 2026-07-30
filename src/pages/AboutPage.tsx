@@ -48,7 +48,7 @@ export default function AboutPage() {
                 mb: 2,
               }}
             >
-              <AppLogo size={48} />
+              <AppLogo size={88} />
             </Box>
             <Typography variant="h4" fontWeight={800} textAlign="center">
               {appConfig.appName}

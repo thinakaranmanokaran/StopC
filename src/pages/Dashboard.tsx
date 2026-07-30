@@ -96,7 +96,7 @@ export default function Dashboard() {
                   boxShadow: "0px 1px 2px rgba(0,0,0,0.12), 0px 2px 6px 2px rgba(0,0,0,0.08)",
                 }}
               >
-                <AppLogo size={48} />
+                <AppLogo size={88} />
               </Box>
               <Typography variant="h4" fontWeight={800} textAlign="center">
                 {userName ? `Hey, ${userName}` : appConfig.appName}
