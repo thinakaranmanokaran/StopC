@@ -70,9 +70,18 @@ export default function App() {
 
   useEffect(() => {
     const unlistenPromise = listen<string>("tray://navigate", (event) => {
-      const target = event.payload;
-      if (target === "dashboard" || target === "settings" || target === "about" || target === "developer") {
-        setPage(target);
+      const [route, section] = event.payload.split("#");
+      if (route === "dashboard" || route === "settings" || route === "about" || route === "developer") {
+        setPage(route);
+        if (route === "settings" && section) {
+          // Wait a beat so the page change + scroll-to-top finish first,
+          // then scroll the requested Settings section into view.
+          window.setTimeout(() => {
+            document
+              .getElementById(`settings-${section}-section`)
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 60);
+        }
       }
     });
     return () => {

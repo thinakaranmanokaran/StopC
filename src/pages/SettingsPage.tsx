@@ -133,7 +133,6 @@ export default function SettingsPage() {
         <motion.div custom={1} initial="hidden" animate="visible" variants={fadeUp}>
           <M3Card>
             <SectionHeader icon={<UserRound size={20} />} title="Profile" />
-            <SectionHeader/>
             <TextField
               label="Your name"
               value={settings.userName}
@@ -148,7 +147,14 @@ export default function SettingsPage() {
         </motion.div>
 
         {/* Notifications */}
-        <motion.div custom={2} initial="hidden" animate="visible" variants={fadeUp}>
+        <motion.div
+          custom={2}
+          initial="hidden"
+          animate="visible"
+          variants={fadeUp}
+          id="settings-notifications-section"
+          style={{ scrollMarginTop: 24 }}
+        >
           <M3Card>
             <SectionHeader icon={<Bell size={20} />} title="Notifications" />
             <Stack spacing={0}>
@@ -279,7 +285,14 @@ export default function SettingsPage() {
         </motion.div>
 
         {/* Funny Mode */}
-        <motion.div custom={3} initial="hidden" animate="visible" variants={fadeUp}>
+        <motion.div
+          custom={3}
+          initial="hidden"
+          animate="visible"
+          variants={fadeUp}
+          id="settings-funny-section"
+          style={{ scrollMarginTop: 24 }}
+        >
           <M3Card>
             <SectionHeader icon={<Sparkles size={20} />} title="Funny Mode" />
             <Stack spacing={0}>

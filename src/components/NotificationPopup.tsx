@@ -1,4 +1,4 @@
-import { motion, type PanInfo } from "framer-motion";
+import { motion, type PanInfo, type Target, type TargetAndTransition, type Transition } from "framer-motion";
 import { Box, Stack, Typography } from "@mui/material";
 import { CheckCircle2, Image as ImageIcon, Files, Folder, FileText, Info } from "lucide-react";
 import type { ActiveToast } from "@/types/toast";
@@ -45,7 +45,16 @@ const TITLES: Record<ClipboardEventPayload["kind"], string> = {
 };
 
 
-const VARIANTS: Record<NotificationAnimation, { initial: object; animate: object; exit: object; transition?: object }> = {
+type AnimationVariant = {
+  initial: Target;
+  animate: TargetAndTransition;
+  exit: TargetAndTransition;
+  transition?: Transition;
+};
+
+const DEFAULT_TRANSITION: Transition = { duration: 0.22, ease: "easeOut" };
+
+const VARIANTS: Record<NotificationAnimation, AnimationVariant> = {
   slide: { initial: { x: 80, opacity: 0 }, animate: { x: 0, opacity: 1 }, exit: { x: 80, opacity: 0 } },
   fade: { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } },
   scale: { initial: { scale: 0.85, opacity: 0 }, animate: { scale: 1, opacity: 1 }, exit: { scale: 0.85, opacity: 0 } },
@@ -82,7 +91,7 @@ function CountdownBar({ toastId, durationMs, color, paused }: { toastId: string;
   );
 }
 
-function ToastHeader({ color }: { color: string }) {
+function ToastHeader() {
   return (
     <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1, opacity: 0.65 }}>
       <AppLogo size={13} />
@@ -228,7 +237,7 @@ export function NotificationPopup({
       initial={variant.initial}
       animate={variant.animate}
       exit={variant.exit}
-      transition={variant.transition ?? { duration: 0.22, ease: "easeOut" }}
+      transition={variant.transition ?? DEFAULT_TRANSITION}
       drag
       dragElastic={0.3}
       dragMomentum={false}
@@ -254,7 +263,7 @@ export function NotificationPopup({
           boxShadow: style.shadow,
         }}
       >
-        <ToastHeader color={style.color} />
+        <ToastHeader />
         <ToastBody toast={toast} style={style} mascotsEnabled={mascotsEnabled} />
         {showCounter && (
           <CountdownBar toastId={toast.id} durationMs={durationMs} color={accentColor} paused={isPaused} />

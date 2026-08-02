@@ -105,15 +105,24 @@ fn main() {
                         "settings" => {
                             let _ = app.emit("tray://navigate", "settings");
                         }
+                        // Pause Notifications / Funny Mode jump straight to the
+                        // relevant section of the Settings page.
+                        "pause" => {
+                            let _ = app.emit("tray://navigate", "settings#notifications");
+                        }
+                        "funny" => {
+                            let _ = app.emit("tray://navigate", "settings#funny");
+                        }
+                        // Statistics lives on the Dashboard page.
+                        "stats" => {
+                            let _ = app.emit("tray://navigate", "dashboard");
+                        }
                         "about" => {
                             let _ = app.emit("tray://navigate", "about");
                         }
                         "open" => {
                             let _ = app.emit("tray://navigate", "dashboard");
                         }
-                        // "pause", "funny", "stats" still just focus the window for
-                        // now — Pause/Funny toggles and a dedicated Stats page are
-                        // tracked as follow-ups (see PLAN.md).
                         _ => {}
                     }
                 })

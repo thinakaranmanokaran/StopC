@@ -11,7 +11,7 @@ interface M3SelectableGridProps {
   options: GridOption[];
   value: string | number;
   onChange: (value: string | number) => void;
-  columns?: 2 | 3;
+  columns?: 2 | 3 | 4;
   disabled?: boolean;
 }
 
