@@ -180,6 +180,7 @@ function NotificationWindow() {
         alignItems: vertical,
         justifyContent: horizontal,
         p: 2,
+        pr: 1,
         boxSizing: "border-box",
       }}
     >

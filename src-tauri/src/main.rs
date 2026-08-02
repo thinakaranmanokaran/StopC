@@ -54,22 +54,27 @@ fn main() {
             clipboard::spawn_watcher(app.handle().clone(), state.clone());
             funny_mode::spawn_key_listener(app.handle().clone(), state.clone());
 
-            // Only show the dashboard on launches a human actually
-            // triggered (first install, Start Menu, Search, Desktop
-            // icon) — not on the silent OS autostart-at-login launch.
-            // The single-instance handler above covers "app already
-            // running, user clicked the icon again"; this covers "app
-            // wasn't running yet and this very process is the one
-            // starting because of that click."
+            // The main window is created visible (see tauri.conf.json) so
+            // Windows initializes its native frame/title bar correctly —
+            // a window created hidden and later shown via `.show()` during
+            // setup can render with a broken (non-interactive) title bar,
+            // making it impossible to move, close, minimize or maximize.
+            //
+            // So on a normal launch we do nothing (already visible) and on
+            // the silent OS autostart-at-login launch we hide it straight
+            // away to live in the tray instead. The single-instance handler
+            // above covers "app already running, user clicked the icon
+            // again"; this covers "app wasn't running yet and this very
+            // process is the one starting because of that click."
             let launched_by_autostart = std::env::args().any(|a| a == AUTOSTART_MARKER);
-            if !launched_by_autostart {
+            if launched_by_autostart {
                 if let Some(main) = app.get_webview_window("main") {
-                    let _ = main.show();
-                    let _ = main.set_focus();
+                    let _ = main.hide();
                 }
-            } else {
                 // Still a good moment to let the user know we're alive.
                 announce_background_launch(app.handle());
+            } else if let Some(main) = app.get_webview_window("main") {
+                let _ = main.set_focus();
             }
 
             // System tray.
@@ -89,6 +94,7 @@ fn main() {
 
             TrayIconBuilder::new()
                 .menu(&tray_menu)
+                .tooltip("StopC")
                 .show_menu_on_left_click(true)
                 .icon(app.default_window_icon().unwrap().clone())
                 .on_menu_event(|app, event| {

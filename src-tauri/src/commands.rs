@@ -1,9 +1,26 @@
 use std::sync::Arc;
 
 use tauri::{AppHandle, Emitter, State};
+use tauri_plugin_autostart::ManagerExt;
 
 use crate::notification::{hide_notification, position_notification_window};
 use crate::state::{AppState, Settings};
+
+/// Applies the "Launch StopC when you log in" preference to the OS, so
+/// toggling it in Settings actually registers (or removes) the login
+/// entry. Runs on every settings sync — including the first-run load,
+/// where `autoStart` defaults to true — so the backend's autostart
+/// plugin state always matches what the frontend has persisted.
+fn sync_autostart(app: &AppHandle, auto_start: bool) {
+    let result = if auto_start {
+        app.autolaunch().enable()
+    } else {
+        app.autolaunch().disable()
+    };
+    if let Err(e) = result {
+        eprintln!("[stopc] failed to apply auto-start={auto_start}: {e}");
+    }
+}
 
 #[tauri::command]
 pub fn get_settings(state: State<Arc<AppState>>) -> Settings {
@@ -21,6 +38,7 @@ pub fn save_settings(
         let mut guard = state.settings.lock().map_err(|e| e.to_string())?;
         *guard = settings.clone();
     }
+    sync_autostart(&app, settings.auto_start);
     position_notification_window(&app, &position);
     // Broadcast to every window. The frontend's source of truth is
     // localStorage (shared across windows where the OS webview
@@ -35,6 +53,7 @@ pub fn save_settings(
 pub fn reset_settings(app: AppHandle, state: State<Arc<AppState>>) -> Settings {
     let defaults = Settings::default();
     *state.settings.lock().unwrap() = defaults.clone();
+    sync_autostart(&app, defaults.auto_start);
     let _ = app.emit("settings://updated", defaults.clone());
     defaults
 }

@@ -225,8 +225,7 @@ export function NotificationPopup({
   // tell the parent to dismiss — the toast unmounts and Framer Motion's
   // `exit` animation plays instead of a manual snap animation.
   const handleDragEnd = (_: unknown, info: PanInfo) => {
-    const distance = Math.hypot(info.offset.x, info.offset.y);
-    if (distance > DRAG_DISMISS_THRESHOLD) {
+    if (Math.abs(info.offset.x) > DRAG_DISMISS_THRESHOLD) {
       onDismiss();
     }
   };
@@ -238,7 +237,7 @@ export function NotificationPopup({
       animate={variant.animate}
       exit={variant.exit}
       transition={variant.transition ?? DEFAULT_TRANSITION}
-      drag
+      drag="x"
       dragElastic={0.3}
       dragMomentum={false}
       dragSnapToOrigin
