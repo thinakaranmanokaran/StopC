@@ -1,0 +1,113 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build-desktop:
+    name: Build (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - windows-latest
+          - macos-latest
+          - ubuntu-22.04
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            libxtst-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libwayland-dev \
+            patchelf \
+            xdg-utils
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build and upload to release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: StopC v__VERSION__
+          releaseBody: |
+            Automatic build from commit ${{ github.sha }}.
+            Download the installer for your platform from the assets below.
+          releaseDraft: false
+          prerelease: false
+
+  build-ios:
+    name: Build (iOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios-sim
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Initialize iOS project
+        run: npx tauri ios init
+
+      - name: Build iOS app (simulator, no code signing needed)
+        run: npx tauri ios build --target aarch64-apple-ios-sim
+
+      - name: Get app version
+        id: version
+        run: |
+          VERSION=$(grep -m1 '"version"' src-tauri/tauri.conf.json | sed -E 's/.*"version"[^"]*"([^"]+)".*/\1/')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Package iOS app
+        run: |
+          APP_DIR=$(find src-tauri/target -type d -name "*.app" | head -n 1)
+          echo "App bundle: $APP_DIR"
+          zip -r StopC_${{ steps.version.outputs.version }}_iOS-Simulator.app.zip "$APP_DIR"
+
+      - name: Upload iOS build to release
+        run: |
+          VERSION=v${{ steps.version.outputs.version }}
+          gh release view "$VERSION" --json tagName -q .tagName >/dev/null 2>&1 \
+            || gh release create "$VERSION" --title "StopC $VERSION" --notes "Automatic build from commit ${{ github.sha }}." --target "${{ github.sha }}"
+          gh release upload "$VERSION" StopC_${{ steps.version.outputs.version }}_iOS-Simulator.app.zip --clobber
