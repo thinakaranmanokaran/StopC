@@ -28,7 +28,16 @@ pub fn show_notification(app: &AppHandle, state: &Arc<AppState>, _kind: &str) {
         let _ = window.set_position(LogicalPosition::new(x, y));
     }
 
+    // Re-assert always-on-top around `.show()`. The window is created
+    // topmost (tauri.conf.json) but merely calling `.show()` on a hidden
+    // window does not always raise it above other topmost/fullscreen
+    // windows (e.g. Edge in fullscreen on Windows). Re-applying the
+    // flag re-inserts us at the top of the topmost z-order band, so the
+    // toast floats above every application — the native equivalent of a
+    // huge z-index.
+    let _ = window.set_always_on_top(true);
     let _ = window.show();
+    let _ = window.set_always_on_top(true);
 }
 
 /// Hides the notification window. Called by the frontend once its own

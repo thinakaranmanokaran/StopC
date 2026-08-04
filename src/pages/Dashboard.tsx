@@ -24,7 +24,7 @@ const QUICK_FILLS = [
   // { label: "Email", icon: <Mail size={14} />, value: "hello@example.com" },
   // { label: "Address", icon: <MapPin size={14} />, value: "221B Baker Street, London" },
   // { label: "Password", icon: <KeyRound size={14} />, value: "Tr0ub4dor&3xample" },
-  { label: "Paragraph", icon: <FileText size={14} />, value: "StopC just copied this for you — press Ctrl+C again on the same text and Funny Mode will notice." },
+  { label: "Paragraph", icon: <FileText size={14} />, value: "StopC just copied this for you now press Ctrl+C again on the same text and Funny Mode will notice." },
 ];
 
 export default function Dashboard() {

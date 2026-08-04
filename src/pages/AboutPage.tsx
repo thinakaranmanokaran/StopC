@@ -28,6 +28,8 @@ const fadeUp = {
 
 export default function AboutPage() {
   const theme = useTheme();
+  const iconColor = theme.palette.text.secondary;
+
   return (
     <Container maxWidth="sm" sx={{ py: 6 }}>
       <Stack spacing={0}>
@@ -80,7 +82,7 @@ export default function AboutPage() {
             <Stack spacing={1.5}>
               {FEATURES.map((feature, i) => (
                 <Stack key={i} direction="row" spacing={1.5} alignItems="flex-start">
-                  <Check size={18} color="white" style={{ marginTop: 3, flexShrink: 0 }} />
+                  <Check size={18} color={iconColor} style={{ marginTop: 3, flexShrink: 0 }} />
                   <Typography variant="body2" color="text.secondary">
                     {feature}
                   </Typography>
@@ -95,7 +97,7 @@ export default function AboutPage() {
           <M3Card>
             <Stack spacing={2}>
               <Stack direction="row" alignItems="center" spacing={1.5}>
-                <Package size={18} color="primary" />
+                <Package size={18} color={iconColor} />
                 <Typography variant="body2" color="text.secondary" flex={1}>
                   Version
                 </Typography>
@@ -105,7 +107,7 @@ export default function AboutPage() {
               </Stack>
               <Divider />
               <Stack direction="row" alignItems="center" spacing={1.5}>
-                <Scale size={18} color="primary" />
+                <Scale size={18} color={iconColor} />
                 <Typography variant="body2" color="text.secondary" flex={1}>
                   License
                 </Typography>
@@ -115,7 +117,7 @@ export default function AboutPage() {
               </Stack>
               <Divider />
               <Stack direction="row" alignItems="center" spacing={1.5}>
-                <Layers size={18} color="primary" />
+                <Layers size={18} color={iconColor} />
                 <Typography variant="body2" color="text.secondary" flex={1}>
                   Stack
                 </Typography>
