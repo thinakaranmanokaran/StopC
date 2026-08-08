@@ -7,6 +7,8 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Emitter};
 
+use crate::apps;
+use crate::snooze;
 use crate::state::AppState;
 
 #[derive(Debug, Clone, Serialize)]
@@ -31,6 +33,10 @@ pub struct ClipboardEventPayload {
     pub item_count: Option<u32>,
     pub timestamp: u64,
     pub is_duplicate: bool,
+    /// True if this copy was snoozed or made while an excluded app was
+    /// in the foreground — still tracked in history, but the toast/
+    /// sound is suppressed. See src-tauri/src/snooze.rs and apps.rs.
+    pub suppressed: bool,
 }
 
 const PREVIEW_MAX_CHARS: usize = 120;
@@ -55,12 +61,24 @@ pub fn spawn_watcher(app: AppHandle, state: std::sync::Arc<AppState>) {
             let poll_ms = state.settings.lock().unwrap().poll_interval_ms;
             thread::sleep(Duration::from_millis(poll_ms));
 
-            if let Some(payload) = check_clipboard(&mut clipboard, &state) {
+            if let Some(mut payload) = check_clipboard(&mut clipboard, &state) {
                 let is_dup = payload.is_duplicate;
                 let kind = payload.kind.clone();
-                if let Err(e) = app.emit("clipboard://changed", payload) {
+
+                if !is_dup {
+                    let foreground_exe = apps::foreground_process_exe_name().unwrap_or_default();
+                    let is_excluded = {
+                        let settings = state.settings.lock().unwrap();
+                        apps::is_notification_excluded(&foreground_exe, &settings)
+                    };
+                    let is_snoozed = snooze::is_snoozed(&state);
+                    payload.suppressed = is_excluded || is_snoozed;
+                }
+
+                if let Err(e) = app.emit("clipboard://changed", payload.clone()) {
                     eprintln!("[stopc] failed to emit clipboard event: {e}");
                 }
+
                 if !is_dup {
                     let should_notify = {
                         let settings = state.settings.lock().unwrap();
@@ -72,7 +90,7 @@ pub fn spawn_watcher(app: AppHandle, state: std::sync::Arc<AppState>) {
                             ClipboardKind::File | ClipboardKind::Files | ClipboardKind::Folder => true,
                         }
                     };
-                    if should_notify {
+                    if should_notify && !payload.suppressed {
                         crate::notification::show_notification(&app, &state, "copy");
                     }
                     state.reset_funny_counter();
@@ -99,6 +117,7 @@ fn check_clipboard(clipboard: &mut Clipboard, state: &AppState) -> Option<Clipbo
             item_count: None,
             timestamp: now_millis(),
             is_duplicate: false,
+            suppressed: false,
         });
     }
 
@@ -113,6 +132,7 @@ fn check_clipboard(clipboard: &mut Clipboard, state: &AppState) -> Option<Clipbo
             item_count: None,
             timestamp: now_millis(),
             is_duplicate: false,
+            suppressed: false,
         });
     }
 

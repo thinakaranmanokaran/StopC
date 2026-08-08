@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import {
   Bell,
+  BellOff,
   Sparkles,
   Volume2,
   Power,
@@ -33,6 +34,7 @@ import {
   BadgeInfo,
   UserRound,
   ListOrdered,
+  Clock,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSettingsStore, DEFAULT_SETTINGS } from "@/store/settingsStore";
@@ -40,6 +42,8 @@ import type { StopCSettings } from "@/store/settingsStore";
 import { loadSettings, saveSettings, resetSettingsBackend } from "@/services/settingsService";
 import { playNotificationSound } from "@/services/soundPlayer";
 import { notify } from "@/services/toast";
+import { useSnoozeStore } from "@/store/snoozeStore";
+import { getSnoozeState, setSnooze, cancelSnooze } from "@/services/snoozeService";
 import M3Card from "@/components/M3Card";
 import ToggleRow from "@/components/ToggleRow";
 import M3SelectableGrid from "@/components/M3SelectableGrid";
@@ -71,6 +75,42 @@ export default function SettingsPage() {
   const setSettings = useSettingsStore((s) => s.setSettings);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<StopCSettings>(settings);
+
+  const snoozedUntilMs = useSnoozeStore((s) => s.snoozedUntilMs);
+  const setSnoozedUntilMs = useSnoozeStore((s) => s.setSnoozedUntilMs);
+  const [snoozeBusy, setSnoozeBusy] = useState(false);
+  const isSnoozed = snoozedUntilMs > Date.now();
+
+  useEffect(() => {
+    getSnoozeState()
+      .then((s) => setSnoozedUntilMs(s.snoozedUntilMs))
+      .catch((e) => console.error("[stopc] failed to load snooze state:", e));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSnoozeNow = async () => {
+    setSnoozeBusy(true);
+    try {
+      const s = await setSnooze(settings.snoozeDurationSeconds);
+      setSnoozedUntilMs(s.snoozedUntilMs);
+    } catch (e) {
+      console.error("[stopc] failed to snooze:", e);
+    } finally {
+      setSnoozeBusy(false);
+    }
+  };
+
+  const handleCancelSnooze = async () => {
+    setSnoozeBusy(true);
+    try {
+      const s = await cancelSnooze();
+      setSnoozedUntilMs(s.snoozedUntilMs);
+    } catch (e) {
+      console.error("[stopc] failed to cancel snooze:", e);
+    } finally {
+      setSnoozeBusy(false);
+    }
+  };
 
   useEffect(() => {
     loadSettings()
@@ -280,6 +320,72 @@ export default function SettingsPage() {
                   ]}
                 />
               </Box>
+            </Stack>
+          </M3Card>
+        </motion.div>
+
+        {/* Snooze */}
+        <motion.div
+          custom={2.5}
+          initial="hidden"
+          animate="visible"
+          variants={fadeUp}
+          id="settings-snooze-section"
+          style={{ scrollMarginTop: 24 }}
+        >
+          <M3Card>
+            <SectionHeader icon={<Clock size={20} />} title="Snooze" />
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Pause notifications for a while. The tray icon's "Snooze" option always
+              applies whichever duration is selected below.
+            </Typography>
+            <M3SelectableGrid
+              value={settings.snoozeDurationSeconds}
+              onChange={(v) => update("snoozeDurationSeconds", v as number)}
+              columns={3}
+              options={[
+                { value: 30, label: "30 sec" },
+                { value: 60, label: "1 min" },
+                { value: 600, label: "10 min" },
+                { value: 3600, label: "1 hour" },
+                { value: 18000, label: "5 hour" },
+                { value: 86400, label: "1 day" },
+              ]}
+            />
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 2.5 }}>
+              {isSnoozed ? (
+                <>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1 }}>
+                    <BellOff size={16} style={{ opacity: 0.7 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Snoozed until{" "}
+                      {new Date(snoozedUntilMs).toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </Typography>
+                  </Stack>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleCancelSnooze}
+                    disabled={snoozeBusy}
+                    sx={{ borderRadius: "12px" }}
+                  >
+                    Cancel Snooze
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleSnoozeNow}
+                  disabled={snoozeBusy}
+                  sx={{ borderRadius: "12px" }}
+                >
+                  Snooze Now
+                </Button>
+              )}
             </Stack>
           </M3Card>
         </motion.div>

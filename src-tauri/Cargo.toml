@@ -30,6 +30,19 @@ rdev = "0.5"
 
 rand = "0.8"
 
+# Update checker (GitHub Releases API) + installer download.
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+tokio = { version = "1", features = ["fs", "io-util", "time"] }
+
+[target.'cfg(windows)'.dependencies]
+# Foreground-window process lookup for the Exclusions feature and the
+# Funny Mode terminal-app fix — fast, in-process Win32 calls (no
+# subprocess spawning, so it doesn't add latency to the notification path).
+winapi = { version = "0.3", features = ["winuser", "processthreadsapi", "psapi", "handleapi", "winnt", "minwindef"] }
+# Reads the "installed programs" list from the Uninstall registry keys
+# for the Exclusions page.
+winreg = "0.52"
+
 [features]
 custom-protocol = ["tauri/custom-protocol"]
 

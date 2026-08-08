@@ -110,7 +110,10 @@ function NotificationWindow() {
 
     (async () => {
       const un1 = await listen<ClipboardEventPayload>("clipboard://changed", (event) => {
-        if (event.payload.isDuplicate) return;
+        // Suppressed = snoozed, or copied while an excluded app was in
+        // the foreground. Still tracked in the dashboard's history via
+        // useClipboardWatcher — just no toast, no sound.
+        if (event.payload.isDuplicate || event.payload.suppressed) return;
         const current = useSettingsStore.getState().settings;
         showToast(
           { id: `copy-${event.payload.timestamp}`, kind: "copy", copy: event.payload },

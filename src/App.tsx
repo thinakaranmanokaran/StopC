@@ -12,7 +12,7 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
-import { LayoutDashboard, Settings as SettingsIcon, Code2, Sun, Moon, Info } from "lucide-react";
+import { LayoutDashboard, Settings as SettingsIcon, Code2, Sun, Moon, Info, ShieldOff } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import { useThemeMode } from "@/main";
 import { AppLogo } from "@/components/AppLogo";
@@ -20,12 +20,14 @@ import { appConfig } from "@/config/appConfig";
 import { NameCaptureScreen } from "@/components/NameCaptureScreen";
 import { useSettingsStore } from "@/store/settingsStore";
 import { loadSettings, saveSettings } from "@/services/settingsService";
+import { subscribeToSnoozeUpdates } from "@/services/snoozeService";
 import Dashboard from "@/pages/Dashboard";
 import SettingsPage from "@/pages/SettingsPage";
 import AboutPage from "@/pages/AboutPage";
 import DeveloperPage from "@/pages/DeveloperPage";
+import ExclusionsPage from "@/pages/ExclusionsPage";
 
-type Page = "dashboard" | "settings" | "about" | "developer";
+type Page = "dashboard" | "settings" | "about" | "developer" | "exclusions";
 
 const DRAWER_WIDTH = 220;
 const NAME_PROMPTED_KEY = "stopc:namePrompted";
@@ -33,6 +35,7 @@ const NAME_PROMPTED_KEY = "stopc:namePrompted";
 const NAV_ITEMS: { id: Page; label: string; icon: React.ReactNode }[] = [
   { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
   { id: "settings", label: "Settings", icon: <SettingsIcon size={20} /> },
+  { id: "exclusions", label: "Exclusions", icon: <ShieldOff size={20} /> },
   { id: "about", label: "About", icon: <Info size={20} /> },
 ];
 
@@ -62,8 +65,10 @@ export default function App() {
     const unlistenPromise = listen<typeof settings>("settings://updated", (event) => {
       replaceSettings(event.payload);
     });
+    const unlistenSnoozePromise = subscribeToSnoozeUpdates();
     return () => {
       unlistenPromise.then((unlisten) => unlisten());
+      unlistenSnoozePromise.then((unlisten) => unlisten());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -71,7 +76,13 @@ export default function App() {
   useEffect(() => {
     const unlistenPromise = listen<string>("tray://navigate", (event) => {
       const [route, section] = event.payload.split("#");
-      if (route === "dashboard" || route === "settings" || route === "about" || route === "developer") {
+      if (
+        route === "dashboard" ||
+        route === "settings" ||
+        route === "about" ||
+        route === "developer" ||
+        route === "exclusions"
+      ) {
         setPage(route);
         if (route === "settings" && section) {
           // Wait a beat so the page change + scroll-to-top finish first,
@@ -92,7 +103,13 @@ export default function App() {
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<Page>).detail;
-      if (detail === "dashboard" || detail === "settings" || detail === "about" || detail === "developer") {
+      if (
+        detail === "dashboard" ||
+        detail === "settings" ||
+        detail === "about" ||
+        detail === "developer" ||
+        detail === "exclusions"
+      ) {
         setPage(detail);
       }
     };
@@ -173,6 +190,7 @@ export default function App() {
       <Box component="main" sx={{ flexGrow: 1, overflow: "auto" }}>
         {page === "dashboard" && <Dashboard />}
         {page === "settings" && <SettingsPage />}
+        {page === "exclusions" && <ExclusionsPage />}
         {page === "about" && <AboutPage />}
         {page === "developer" && <DeveloperPage />}
       </Box>

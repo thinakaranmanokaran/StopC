@@ -25,6 +25,9 @@ export interface ClipboardEventPayload {
   timestamp: number;
   /** True if this event was suppressed as a duplicate (same hash as last copy). */
   isDuplicate: boolean;
+  /** True if this copy was snoozed or made in an excluded app — still
+   * tracked in history, but the toast/sound is suppressed. */
+  suppressed: boolean;
 }
 
 import type { Mood } from "@/utils/mood";

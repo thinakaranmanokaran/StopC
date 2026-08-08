@@ -70,7 +70,7 @@ pub fn record_copy_attempt(app: AppHandle, state: State<Arc<AppState>>) -> Resul
         .map_err(|e| e.to_string())?
         .clone();
 
-    if !settings.funny_mode_enabled {
+    if !settings.funny_mode_enabled || crate::snooze::is_snoozed(state.inner()) {
         return Ok(());
     }
 

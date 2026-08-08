@@ -11,6 +11,11 @@ pub struct AppState {
     /// Consecutive Ctrl+C presses observed with no clipboard change.
     pub repeat_count: AtomicU32,
     pub settings: Mutex<Settings>,
+    /// Unix-millis timestamp until which notifications are snoozed.
+    /// 0 means "not snoozed". Deliberately NOT part of `Settings` /
+    /// localStorage — it's a live countdown, not a saved preference,
+    /// and resetting on app restart is the expected behavior.
+    pub snoozed_until_ms: AtomicU64,
 }
 
 impl Default for AppState {
@@ -20,6 +25,7 @@ impl Default for AppState {
             last_change_at: AtomicU64::new(0),
             repeat_count: AtomicU32::new(0),
             settings: Mutex::new(Settings::default()),
+            snoozed_until_ms: AtomicU64::new(0),
         }
     }
 }
@@ -73,6 +79,14 @@ pub struct Settings {
     /// string means "not set" — Rust doesn't otherwise use this value,
     /// it's purely carried through for cross-window sync.
     pub user_name: String,
+    /// How long a tray-triggered "Snooze" applies for, in seconds.
+    /// Chosen in Settings from a fixed set of durations (30s .. 1 day).
+    pub snooze_duration_seconds: u64,
+    /// Lowercased executable basenames (e.g. "code.exe") whose copies
+    /// should never trigger a visible/audible notification. Populated
+    /// from the Exclusions page. Clipboard history/tracking is NOT
+    /// affected — only the toast + sound are suppressed.
+    pub excluded_apps: Vec<String>,
 }
 
 // `#[serde(default)]` on the struct above means any field missing from
@@ -100,6 +114,8 @@ impl Default for Settings {
             notify_on_image: true,
             show_counter: true,
             user_name: String::new(),
+            snooze_duration_seconds: 600,
+            excluded_apps: Vec::new(),
         }
     }
 }

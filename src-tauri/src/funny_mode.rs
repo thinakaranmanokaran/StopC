@@ -6,7 +6,9 @@ use rdev::{listen, Event, EventType, Key};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
+use crate::apps;
 use crate::funny_messages::{random_message, Mood};
+use crate::snooze;
 use crate::state::{AppState, Settings};
 
 #[derive(Debug, Clone, Serialize)]
@@ -114,6 +116,23 @@ pub(crate) fn handle_repeat_attempt(app: &AppHandle, state: &Arc<AppState>, sett
 fn on_ctrl_c(app: &AppHandle, state: &Arc<AppState>) {
     let settings = state.settings.lock().unwrap().clone();
     if !settings.funny_mode_enabled {
+        return;
+    }
+
+    if snooze::is_snoozed(state) {
+        return;
+    }
+
+    // BUG FIX: this used to fire purely off the global Ctrl+C keypress,
+    // with no awareness of *what app* it was pressed in. In a terminal
+    // (cmd.exe, PowerShell, etc.) Ctrl+C means "cancel/terminate the
+    // running command", not "copy" — so terminating a task there was
+    // indistinguishable from someone frantically re-copying, and
+    // triggered a false "did you forget to copy?" popup. We now check
+    // the foreground app and skip entirely for known terminals/shells
+    // and for anything the user excluded on the Exclusions page.
+    let foreground_exe = apps::foreground_process_exe_name().unwrap_or_default();
+    if apps::is_funny_mode_excluded(&foreground_exe, &settings) {
         return;
     }
 

@@ -1,18 +1,44 @@
-import { Container, Stack, Typography, Box, Divider, useTheme } from "@mui/material";
-import { Check, Package, Scale, Layers } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Container,
+  Stack,
+  Typography,
+  Box,
+  Divider,
+  useTheme,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  LinearProgress,
+  CircularProgress,
+} from "@mui/material";
+import { Check, Package, Scale, Layers, Github, RefreshCw, DownloadCloud, PartyPopper } from "lucide-react";
 import { motion } from "framer-motion";
+import { listen } from "@tauri-apps/api/event";
+import { getVersion } from "@tauri-apps/api/app";
 import M3Card from "@/components/M3Card";
 import { AppLogo } from "@/components/AppLogo";
 import { appConfig } from "@/config/appConfig";
 import { cardShadow } from "@/utils/elevation";
+import {
+  checkForUpdates,
+  downloadAndInstallUpdate,
+  subscribeToUpdateProgress,
+  subscribeToUpdateStatus,
+  type UpdateInfo,
+} from "@/services/updateService";
 
-const APP_VERSION = "0.1.0";
+const GITHUB_URL = "https://github.com/thinakaranmanokaran/StopC";
 
 const FEATURES = [
   "Clipboard monitoring with instant visual confirmation",
   "11 notification themes: material, glassmorphism, neon, macOS, and more",
   "4 animation styles: slide, fade, scale, spring",
   "Customizable position, duration, opacity, and corner radius",
+  "Snooze notifications for 30 seconds up to a full day",
+  "Exclusions — silence notifications per-app",
   "Funny Mode with repeat-detection and mascot reactions",
   "Sound feedback packs for copy events",
 ];
@@ -26,9 +52,95 @@ const fadeUp = {
   }),
 };
 
+type UpdateStage = "idle" | "checking" | "up-to-date" | "available" | "downloading" | "installing" | "error";
+
 export default function AboutPage() {
   const theme = useTheme();
   const iconColor = theme.palette.text.secondary;
+
+  const [version, setVersion] = useState<string>("…");
+  const [stage, setStage] = useState<UpdateStage>("idle");
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [progress, setProgress] = useState<{ downloaded: number; total: number }>({
+    downloaded: 0,
+    total: 0,
+  });
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Version is read live from tauri.conf.json (via the Tauri app API) so
+  // this page never drifts out of sync with the actual build.
+  useEffect(() => {
+    getVersion()
+      .then(setVersion)
+      .catch((e) => {
+        console.error("[stopc] failed to read app version:", e);
+        setVersion("1.0.2");
+      });
+  }, []);
+
+  const runCheck = async () => {
+    setStage("checking");
+    setErrorMessage("");
+    setDialogOpen(true);
+    try {
+      const info = await checkForUpdates();
+      setUpdateInfo(info);
+      setStage(info.available ? "available" : "up-to-date");
+    } catch (e) {
+      console.error("[stopc] update check failed:", e);
+      setErrorMessage(e instanceof Error ? e.message : "Couldn't check for updates.");
+      setStage("error");
+    }
+  };
+
+  // The tray's "Check for Updates" item navigates here and fires this
+  // event so the check starts automatically — the tray itself has no
+  // surface to show progress on.
+  useEffect(() => {
+    const unlistenPromise = listen("tray://trigger-update-check", () => {
+      runCheck();
+    });
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const unsub1 = subscribeToUpdateProgress(setProgress);
+    const unsub2 = subscribeToUpdateStatus((status) => {
+      if (status === "installing") setStage("installing");
+    });
+    return () => {
+      unsub1.then((u) => u());
+      unsub2.then((u) => u());
+    };
+  }, []);
+
+  const handleDownloadAndInstall = async () => {
+    if (!updateInfo?.downloadUrl) return;
+    setStage("downloading");
+    setProgress({ downloaded: 0, total: 0 });
+    try {
+      // Resolves only after the installer has been launched and StopC
+      // is about to exit — there's no "finished" UI state to show.
+      await downloadAndInstallUpdate(updateInfo.downloadUrl);
+    } catch (e) {
+      console.error("[stopc] update download/install failed:", e);
+      setErrorMessage(e instanceof Error ? e.message : "The update download failed.");
+      setStage("error");
+    }
+  };
+
+  const closeDialog = () => {
+    // Don't let the user close the dialog mid-download/install.
+    if (stage === "downloading" || stage === "installing") return;
+    setDialogOpen(false);
+  };
+
+  const progressPct =
+    progress.total > 0 ? Math.min(100, Math.round((progress.downloaded / progress.total) * 100)) : undefined;
 
   return (
     <Container maxWidth="sm" sx={{ py: 6 }}>
@@ -59,7 +171,7 @@ export default function AboutPage() {
               {appConfig.slogan}
             </Typography>
             <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mt: 1 }}>
-              Version {APP_VERSION}
+              Version {version}
             </Typography>
           </Stack>
         </motion.div>
@@ -102,7 +214,7 @@ export default function AboutPage() {
                   Version
                 </Typography>
                 <Typography variant="body2" fontWeight={500}>
-                  {APP_VERSION}
+                  {version}
                 </Typography>
               </Stack>
               <Divider />
@@ -128,7 +240,120 @@ export default function AboutPage() {
             </Stack>
           </M3Card>
         </motion.div>
+
+        {/* Actions — Check for Updates + GitHub, both at the bottom */}
+        <motion.div custom={4} initial="hidden" animate="visible" variants={fadeUp}>
+          <Stack direction="row" spacing={1.5} sx={{ mt: 1 }}>
+            <Button
+              variant="contained"
+              fullWidth
+              startIcon={<RefreshCw size={16} />}
+              onClick={runCheck}
+              sx={{ borderRadius: "14px" }}
+            >
+              Check for Updates
+            </Button>
+            <Button
+              variant="outlined"
+              color="inherit"
+              fullWidth
+              startIcon={<Github size={16} />}
+              onClick={() => window.open(GITHUB_URL, "_blank", "noopener,noreferrer")}
+              sx={{ borderRadius: "14px" }}
+            >
+              GitHub
+            </Button>
+          </Stack>
+        </motion.div>
       </Stack>
+
+      {/* Update dialog */}
+      <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          {stage === "checking" && "Checking for updates…"}
+          {stage === "up-to-date" && "You're up to date"}
+          {stage === "available" && "Update available"}
+          {stage === "downloading" && "Downloading update…"}
+          {stage === "installing" && "Launching installer…"}
+          {stage === "error" && "Couldn't check for updates"}
+        </DialogTitle>
+        <DialogContent>
+          {stage === "checking" && (
+            <Stack alignItems="center" spacing={2} sx={{ py: 2 }}>
+              <CircularProgress size={28} />
+            </Stack>
+          )}
+
+          {stage === "up-to-date" && updateInfo && (
+            <Stack alignItems="center" spacing={1.5} sx={{ py: 2 }}>
+              <PartyPopper size={32} color={theme.palette.primary.main} />
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                You're already running the latest version ({updateInfo.currentVersion}).
+              </Typography>
+            </Stack>
+          )}
+
+          {stage === "available" && updateInfo && (
+            <Stack spacing={1.5} sx={{ py: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                StopC {updateInfo.latestVersion} is available — you're on {updateInfo.currentVersion}.
+              </Typography>
+              {!updateInfo.downloadUrl && (
+                <Typography variant="body2" color="text.secondary">
+                  No Windows installer was found in that release. You can grab it manually from GitHub.
+                </Typography>
+              )}
+              <Typography variant="caption" color="text.secondary">
+                Note: the downloaded installer isn't code-signed yet, so Windows SmartScreen
+                may still warn about an unrecognized publisher — that's expected until StopC
+                ships with a code-signing certificate.
+              </Typography>
+            </Stack>
+          )}
+
+          {(stage === "downloading" || stage === "installing") && (
+            <Stack spacing={1.5} sx={{ py: 1 }}>
+              <LinearProgress
+                variant={progressPct !== undefined ? "determinate" : "indeterminate"}
+                value={progressPct}
+              />
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                {stage === "installing"
+                  ? "Starting the installer — StopC will close automatically."
+                  : progressPct !== undefined
+                    ? `${progressPct}% downloaded`
+                    : "Downloading…"}
+              </Typography>
+            </Stack>
+          )}
+
+          {stage === "error" && (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+              {errorMessage || "Something went wrong. Check your internet connection and try again."}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          {stage === "available" && (
+            <>
+              <Button onClick={() => setDialogOpen(false)} color="inherit">
+                Not now
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<DownloadCloud size={16} />}
+                disabled={!updateInfo?.downloadUrl}
+                onClick={handleDownloadAndInstall}
+              >
+                Download &amp; Install
+              </Button>
+            </>
+          )}
+          {(stage === "up-to-date" || stage === "error") && (
+            <Button onClick={() => setDialogOpen(false)}>Close</Button>
+          )}
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

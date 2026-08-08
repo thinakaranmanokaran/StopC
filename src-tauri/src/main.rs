@@ -1,12 +1,15 @@
 // Prevents an extra console window from appearing on Windows release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod apps;
 mod clipboard;
 mod commands;
 mod funny_messages;
 mod funny_mode;
 mod notification;
+mod snooze;
 mod state;
+mod updater;
 
 use std::sync::Arc;
 
@@ -81,15 +84,35 @@ fn main() {
             let open = MenuItem::with_id(app, "open", "Open Dashboard", true, None::<&str>)?;
             let pause = MenuItem::with_id(app, "pause", "Pause Notifications", true, None::<&str>)?;
             let funny = MenuItem::with_id(app, "funny", "Funny Mode", true, None::<&str>)?;
+            let snooze_item = MenuItem::with_id(app, "snooze", "Snooze", true, None::<&str>)?;
+            let cancel_snooze_item =
+                MenuItem::with_id(app, "cancel_snooze", "Cancel Snooze", true, None::<&str>)?;
             let stats = MenuItem::with_id(app, "stats", "Statistics", true, None::<&str>)?;
             let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
+            let exclusions = MenuItem::with_id(app, "exclusions", "Exclusions", true, None::<&str>)?;
+            let check_updates =
+                MenuItem::with_id(app, "check_updates", "Check for Updates", true, None::<&str>)?;
             let about = MenuItem::with_id(app, "about", "About", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let separator = PredefinedMenuItem::separator(app)?;
 
             let tray_menu = Menu::with_items(
                 app,
-                &[&open, &pause, &funny, &separator, &stats, &settings, &separator, &about, &quit],
+                &[
+                    &open,
+                    &pause,
+                    &funny,
+                    &snooze_item,
+                    &cancel_snooze_item,
+                    &separator,
+                    &stats,
+                    &settings,
+                    &exclusions,
+                    &separator,
+                    &about,
+                    &check_updates,
+                    &quit,
+                ],
             )?;
 
             TrayIconBuilder::new()
@@ -102,6 +125,22 @@ fn main() {
                         app.exit(0);
                         return;
                     }
+
+                    // Snooze / Cancel Snooze act immediately and don't need
+                    // the main window to be shown — that's the whole point
+                    // of a tray-only quick action.
+                    match event.id.as_ref() {
+                        "snooze" => {
+                            snooze::snooze_from_tray(app);
+                            return;
+                        }
+                        "cancel_snooze" => {
+                            snooze::cancel_from_tray(app);
+                            return;
+                        }
+                        _ => {}
+                    }
+
                     let Some(main) = app.get_webview_window("main") else {
                         return;
                     };
@@ -123,8 +162,15 @@ fn main() {
                         "stats" => {
                             let _ = app.emit("tray://navigate", "dashboard");
                         }
+                        "exclusions" => {
+                            let _ = app.emit("tray://navigate", "exclusions");
+                        }
                         "about" => {
                             let _ = app.emit("tray://navigate", "about");
+                        }
+                        "check_updates" => {
+                            let _ = app.emit("tray://navigate", "about");
+                            let _ = app.emit("tray://trigger-update-check", ());
                         }
                         "open" => {
                             let _ = app.emit("tray://navigate", "dashboard");
@@ -154,6 +200,12 @@ fn main() {
             commands::reset_settings,
             commands::record_copy_attempt,
             commands::hide_notification_window,
+            apps::list_installed_apps_cmd,
+            snooze::get_snooze_state,
+            snooze::set_snooze,
+            snooze::cancel_snooze,
+            updater::check_for_updates,
+            updater::download_and_install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running StopC");

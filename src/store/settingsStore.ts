@@ -45,6 +45,10 @@ export interface StopCSettings {
   showCounter: boolean;
   /** Set once via the first-run name screen; editable afterward in Settings. */
   userName: string;
+  /** Duration (seconds) applied by the tray "Snooze" item / "Snooze Now" button. */
+  snoozeDurationSeconds: number;
+  /** Lowercased executable basenames (e.g. "code.exe") excluded from notifications. */
+  excludedApps: string[];
 }
 
 export const DEFAULT_SETTINGS: StopCSettings = {
@@ -66,6 +70,8 @@ export const DEFAULT_SETTINGS: StopCSettings = {
   notifyOnImage: true,
   showCounter: true,
   userName: "",
+  snoozeDurationSeconds: 600,
+  excludedApps: [],
 };
 
 interface SettingsState {
