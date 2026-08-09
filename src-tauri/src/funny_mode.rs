@@ -19,6 +19,19 @@ pub struct FunnyModeEvent {
     pub mood: Mood,
 }
 
+/// How long after a real clipboard change a Ctrl+C press still counts as
+/// a suspicious repeat ("did I actually copy?"). Presses outside this
+/// window — e.g. on the desktop with nothing selected — are ignored and
+/// clear any accumulated count instead of triggering Funny Mode.
+const RECENT_COPY_WINDOW_MS: u64 = 10_000;
+
+fn now_millis() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
+}
+
 /// Watches for Ctrl+C key combos system-wide and counts how many land
 /// with no accompanying clipboard change (tracked via AppState, which
 /// the clipboard watcher resets on every real change).
@@ -133,6 +146,17 @@ fn on_ctrl_c(app: &AppHandle, state: &Arc<AppState>) {
     // and for anything the user excluded on the Exclusions page.
     let foreground_exe = apps::foreground_process_exe_name().unwrap_or_default();
     if apps::is_funny_mode_excluded(&foreground_exe, &settings) {
+        return;
+    }
+
+    // A Ctrl+C only counts as a suspicious "did I copy?" repeat when
+    // something was actually copied recently. Pressing Ctrl+C where
+    // there's nothing to copy (e.g. the desktop with no selection) is
+    // not a copy attempt at all — ignore it and clear any stale count
+    // so it can't combine with a future real attempt.
+    let last_change = state.last_change_at.load(Ordering::SeqCst);
+    if last_change == 0 || now_millis() - last_change > RECENT_COPY_WINDOW_MS {
+        state.reset_funny_counter();
         return;
     }
 
