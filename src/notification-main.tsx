@@ -17,6 +17,15 @@ import "@/assets/fonts/fonts.css";
 const FUNNY_MIN_DURATION_MS = 3500;
 const SYSTEM_DURATION_MS = 2200;
 
+// Matches the wrapper Box's `p: 2, pr: 1` spacing (see the render below).
+// Used to shrink-wrap the transparent window around the toast so the
+// invisible window region doesn't eat mouse clicks elsewhere on screen.
+const TOAST_PADDING = { top: 16, bottom: 16, left: 16, right: 4 };
+// Extra window room so enter animations aren't clipped at the window
+// edge. `slide` enters from +80px horizontally, `spring` from -24px.
+const SLIDE_SLACK_X = 80;
+const SPRING_SLACK_Y = 24;
+
 /**
  * Standalone React root for notification.html — a separate, transparent,
  * always-on-top, frameless Tauri window (src-tauri/src/notification.rs)
@@ -37,6 +46,7 @@ function NotificationWindow() {
 
   const [toast, setToast] = useState<ActiveToast | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const toastRef = useRef<HTMLDivElement | null>(null);
 
   // Pausable-timer bookkeeping (refs so they survive re-renders without
   // re-triggering effects).
@@ -84,6 +94,37 @@ function NotificationWindow() {
     },
     [armTimer]
   );
+
+  // The notification window starts out at 380x260 (tauri.conf.json).
+  // Once a toast renders we resize the window down to just the toast +
+  // padding + animation slack and re-anchor it to the configured corner,
+  // so the transparent window no longer blocks clicks across a large
+  // invisible rectangle (e.g. over Chrome's bookmark bar).
+  const fitWindowToToast = useCallback(() => {
+    const el = toastRef.current;
+    if (!el) return;
+    const toastW = el.offsetWidth;
+    const toastH = el.offsetHeight;
+    if (toastW <= 0 || toastH <= 0) return;
+
+    const { animation, position } = useSettingsStore.getState().settings;
+
+    // `slide` enters from +80px (the right). Anchored to a right-side
+    // corner the overshoot leaves the screen and is clipped naturally at
+    // the window/screen edge, so no extra room is needed there.
+    const slackX = animation === "slide" && !position.includes("right") ? SLIDE_SLACK_X : 0;
+    // `spring` enters from -24px (above); only top-anchored corners need
+    // the extra headroom so the toast isn't clipped during the entrance.
+    const slackY = animation === "spring" && position.startsWith("top") ? SPRING_SLACK_Y : 0;
+
+    const width = toastW + TOAST_PADDING.left + TOAST_PADDING.right + slackX;
+    const height = toastH + TOAST_PADDING.top + TOAST_PADDING.bottom + slackY;
+
+    invoke("resize_notification_window", {
+      width: Math.ceil(width),
+      height: Math.ceil(height),
+    }).catch((e) => console.error("[stopc] failed to shrink notification window:", e));
+  }, []);
 
   // Hydrate settings + subscribe to live updates from the backend.
   useEffect(() => {
@@ -158,6 +199,14 @@ function NotificationWindow() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showToast]);
 
+  // Shrink the window around the toast as soon as it's on screen.
+  useEffect(() => {
+    if (!toast) return;
+    const raf = requestAnimationFrame(fitWindowToToast);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast]);
+
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -202,6 +251,7 @@ function NotificationWindow() {
             isPaused={isPaused}
             onHoverChange={handleHoverChange}
             onDismiss={dismiss}
+            toastRef={toastRef}
           />
         )}
       </AnimatePresence>

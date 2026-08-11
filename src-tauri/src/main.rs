@@ -200,6 +200,7 @@ fn main() {
             commands::reset_settings,
             commands::record_copy_attempt,
             commands::hide_notification_window,
+            commands::resize_notification_window,
             apps::list_installed_apps_cmd,
             snooze::get_snooze_state,
             snooze::set_snooze,

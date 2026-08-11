@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use tauri::{AppHandle, LogicalPosition, Manager, Monitor};
+use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, Monitor};
 
 use crate::state::AppState;
 
@@ -24,7 +24,8 @@ pub fn show_notification(app: &AppHandle, state: &Arc<AppState>, _kind: &str) {
     let position = state.settings.lock().unwrap().position.clone();
 
     if let Some(monitor) = window.current_monitor().ok().flatten() {
-        let (x, y) = compute_position(&monitor, &position, &window);
+        let (win_w, win_h) = logical_size(&window);
+        let (x, y) = compute_position(&monitor, &position, win_w, win_h);
         let _ = window.set_position(LogicalPosition::new(x, y));
     }
 
@@ -57,22 +58,52 @@ pub fn position_notification_window(app: &AppHandle, position: &str) {
     let Some(monitor) = window.current_monitor().ok().flatten() else {
         return;
     };
-    let (x, y) = compute_position(&monitor, position, &window);
+    let (win_w, win_h) = logical_size(&window);
+    let (x, y) = compute_position(&monitor, position, win_w, win_h);
     let _ = window.set_position(LogicalPosition::new(x, y));
 }
 
-fn compute_position(monitor: &Monitor, position: &str, window: &tauri::WebviewWindow) -> (f64, f64) {
+/// Shrink-wraps the transparent notification window around the rendered
+/// toast. The window is configured at 380x260 (see tauri.conf.json) to
+/// leave animation room, but once the toast has actually rendered we can
+/// resize it down to just the toast + padding and re-anchor it to the
+/// same corner.
+///
+/// Without this the whole 380x260 region swallows mouse clicks even
+/// where it's fully transparent — an invisible dead zone that makes a
+/// big chunk of the screen (e.g. Chrome's bookmark bar in the top-right)
+/// unclickable for as long as a toast is on screen.
+pub fn resize_notification_window(app: &AppHandle, state: &Arc<AppState>, width: f64, height: f64) {
+    let Some(window) = app.get_webview_window(WINDOW_LABEL) else {
+        return;
+    };
+    if width <= 0.0 || height <= 0.0 {
+        return;
+    }
+    let _ = window.set_size(LogicalSize::new(width, height));
+    let position = state.settings.lock().unwrap().position.clone();
+    if let Some(monitor) = window.current_monitor().ok().flatten() {
+        let (x, y) = compute_position(&monitor, &position, width, height);
+        let _ = window.set_position(LogicalPosition::new(x, y));
+    }
+}
+
+fn logical_size(window: &tauri::WebviewWindow) -> (f64, f64) {
+    let size = window
+        .outer_size()
+        .unwrap_or(tauri::PhysicalSize {
+            width: 380,
+            height: 260,
+        });
+    let scale = window.scale_factor().unwrap_or(1.0);
+    (size.width as f64 / scale, size.height as f64 / scale)
+}
+
+fn compute_position(monitor: &Monitor, position: &str, win_w: f64, win_h: f64) -> (f64, f64) {
     let screen_size = monitor.size();
     let scale = monitor.scale_factor();
     let screen_w = screen_size.width as f64 / scale;
     let screen_h = screen_size.height as f64 / scale;
-
-    let win_size = window.outer_size().unwrap_or(tauri::PhysicalSize {
-        width: 380,
-        height: 260,
-    });
-    let win_w = win_size.width as f64 / scale;
-    let win_h = win_size.height as f64 / scale;
 
     match position {
         "top-left" => (MARGIN, MARGIN),

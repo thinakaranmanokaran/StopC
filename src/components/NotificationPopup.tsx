@@ -1,5 +1,6 @@
 import { motion, type PanInfo, type Target, type TargetAndTransition, type Transition } from "framer-motion";
 import { Box, Stack, Typography } from "@mui/material";
+import type { Ref } from "react";
 import { CheckCircle2, Image as ImageIcon, Files, Folder, FileText, Info } from "lucide-react";
 import type { ActiveToast } from "@/types/toast";
 import type { NotificationAnimation, NotificationTheme } from "@/store/settingsStore";
@@ -22,6 +23,9 @@ interface Props {
   isPaused: boolean;
   onHoverChange: (hovering: boolean) => void;
   onDismiss: () => void;
+  /** Attached to the toast's motion.div so the notification window can
+   *  measure the rendered toast and shrink-wrap itself around it. */
+  toastRef?: Ref<HTMLDivElement>;
 }
 
 const ICONS: Record<ClipboardEventPayload["kind"], typeof CheckCircle2> = {
@@ -213,6 +217,7 @@ export function NotificationPopup({
   isPaused,
   onHoverChange,
   onDismiss,
+  toastRef,
 }: Props) {
   const style = THEME_STYLES[theme];
   const variant = VARIANTS[animation];
@@ -233,6 +238,7 @@ export function NotificationPopup({
   return (
     <motion.div
       key={toast.id}
+      ref={toastRef}
       initial={variant.initial}
       animate={variant.animate}
       exit={variant.exit}

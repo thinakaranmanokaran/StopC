@@ -82,3 +82,17 @@ pub fn record_copy_attempt(app: AppHandle, state: State<Arc<AppState>>) -> Resul
 pub fn hide_notification_window(app: AppHandle) {
     hide_notification(&app);
 }
+
+/// Shrinks the transparent notification window to just the rendered toast
+/// (see notification.rs) so it doesn't leave an invisible click-blocking
+/// rectangle over the screen. Called by the notification window's
+/// frontend after each toast paints.
+#[tauri::command]
+pub fn resize_notification_window(
+    app: AppHandle,
+    state: State<Arc<AppState>>,
+    width: f64,
+    height: f64,
+) {
+    crate::notification::resize_notification_window(&app, state.inner(), width, height);
+}
