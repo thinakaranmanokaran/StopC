@@ -39,6 +39,16 @@ pub fn show_notification(app: &AppHandle, state: &Arc<AppState>, _kind: &str) {
     let _ = window.set_always_on_top(true);
     let _ = window.show();
     let _ = window.set_always_on_top(true);
+    // The toast is a pure overlay: make the whole window click-through so
+    // it can never block the screen underneath. Without this, a
+    // transparent always-on-top webview still swallows mouse clicks over
+    // its entire rectangle even where nothing is drawn — an invisible
+    // dead zone over whatever sits behind it (Chrome's bookmark bar, or
+    // VSCode's minimize/close buttons), which looks like a frozen UI.
+    // Since clicks pass through, hover-based interactions (pause-on-hover,
+    // drag-to-dismiss) are intentionally gone; the frontend just lets the
+    // countdown timer run.
+    let _ = window.set_ignore_cursor_events(true);
 }
 
 /// Hides the notification window. Called by the frontend once its own
@@ -86,6 +96,9 @@ pub fn resize_notification_window(app: &AppHandle, state: &Arc<AppState>, width:
         let (x, y) = compute_position(&monitor, &position, width, height);
         let _ = window.set_position(LogicalPosition::new(x, y));
     }
+    // Resizing shouldn't clear it, but re-assert so the window always
+    // stays click-through no matter what path it was shown through.
+    let _ = window.set_ignore_cursor_events(true);
 }
 
 fn logical_size(window: &tauri::WebviewWindow) -> (f64, f64) {

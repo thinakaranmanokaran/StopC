@@ -102,6 +102,13 @@ pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
 /// Downloads the installer with periodic progress events, then launches
 /// it and exits StopC so the installer can replace the running app.
 ///
+/// The exit is deliberately deferred to a background task AFTER this
+/// command returns: calling `app.exit(0)` from inside the command would
+/// tear down the runtime and cancel the command's response, so the
+/// frontend's `invoke()` promise would never resolve and the dialog
+/// would sit on "Downloading…" forever — which is exactly how this
+/// surfaced as "the update failed".
+///
 /// NOTE: the downloaded installer is unsigned (see the "Unknown
 /// publisher" SmartScreen warning), so Windows will still show the
 /// same SmartScreen prompt for it as for any manual download — this
@@ -114,6 +121,7 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
         .build()
         .map_err(|e| e.to_string())?;
 
+    eprintln!("[stopc] update: downloading {url}");
     let mut resp = client
         .get(&url)
         .send()
@@ -125,8 +133,15 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
     }
 
     let total = resp.content_length().unwrap_or(0);
-    let file_name = url.rsplit('/').next().unwrap_or("StopC-update.exe").to_string();
-    let dest = std::env::temp_dir().join(file_name);
+    let file_name = url
+        .rsplit('/')
+        .next()
+        .unwrap_or("StopC-update")
+        .to_string();
+
+    // Unique per-run temp name so a stale (or still-locked) file from a
+    // previous attempt can never make the download or the launch fail.
+    let dest = std::env::temp_dir().join(format!("stopc-{}-{file_name}", std::process::id()));
 
     let mut file = tokio::fs::File::create(&dest)
         .await
@@ -156,17 +171,66 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
         DownloadProgress { downloaded, total: total.max(downloaded) },
     );
 
+    // GitHub can hand back an HTML error page if the asset was removed
+    // after the check — refuse to "launch" garbage as an installer.
+    if downloaded == 0 {
+        let _ = std::fs::remove_file(&dest);
+        return Err("Downloaded file was empty — the release asset may have been removed.".into());
+    }
+
+    eprintln!(
+        "[stopc] update: downloaded {downloaded} bytes to {}",
+        dest.display()
+    );
     let _ = app.emit("update://status", "installing");
 
-    std::process::Command::new(&dest)
-        .spawn()
-        .map_err(|e| format!("Couldn't launch the installer: {e}"))?;
+    launch_installer(&dest)?;
 
     // Give the installer's own window a moment to appear before we
-    // close StopC (the installer will ask to close it anyway if it's
-    // still holding the exe open, but this makes it feel intentional).
-    tokio::time::sleep(std::time::Duration::from_millis(800)).await;
-    app.exit(0);
+    // close StopC. Runs on a separate task so this command can return
+    // Ok first (see the doc comment above about exit cancelling the
+    // response).
+    let app = app.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(1200)).await;
+        app.exit(0);
+    });
+
+    Ok(())
+}
+
+#[cfg(windows)]
+fn launch_installer(path: &std::path::Path) -> Result<(), String> {
+    let is_msi = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|n| n.to_lowercase().ends_with(".msi"));
+
+    if is_msi {
+        // `.msi` isn't an executable — CreateProcess can't run it.
+        eprintln!("[stopc] update: launching {} via msiexec", path.display());
+        std::process::Command::new("msiexec.exe")
+            .arg("/i")
+            .arg(path)
+            .spawn()
+            .map_err(|e| format!("Couldn't launch the installer: {e}"))?;
+    } else {
+        eprintln!("[stopc] update: launching {} (update mode)", path.display());
+        // `/UPDATE` tells the Tauri NSIS installer to skip the
+        // reinstall/uninstall question and run as a straight upgrade.
+        std::process::Command::new(path)
+            .arg("/UPDATE")
+            .spawn()
+            .map_err(|e| format!("Couldn't launch the installer: {e}"))?;
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn launch_installer(path: &std::path::Path) -> Result<(), String> {
+    std::process::Command::new(path)
+        .spawn()
+        .map_err(|e| format!("Couldn't launch the installer: {e}"))?;
     Ok(())
 }
 

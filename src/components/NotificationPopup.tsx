@@ -1,4 +1,4 @@
-import { motion, type PanInfo, type Target, type TargetAndTransition, type Transition } from "framer-motion";
+import { motion, type Target, type TargetAndTransition, type Transition } from "framer-motion";
 import { Box, Stack, Typography } from "@mui/material";
 import type { Ref } from "react";
 import { CheckCircle2, Image as ImageIcon, Files, Folder, FileText, Info } from "lucide-react";
@@ -20,9 +20,6 @@ interface Props {
   durationMs: number;
   mascotsEnabled: boolean;
   showCounter: boolean;
-  isPaused: boolean;
-  onHoverChange: (hovering: boolean) => void;
-  onDismiss: () => void;
   /** Attached to the toast's motion.div so the notification window can
    *  measure the rendered toast and shrink-wrap itself around it. */
   toastRef?: Ref<HTMLDivElement>;
@@ -71,8 +68,7 @@ const VARIANTS: Record<NotificationAnimation, AnimationVariant> = {
 };
 
 /** CSS-keyframe countdown bar — plain CSS (not Framer Motion's JS-driven
- * animate) specifically so `animation-play-state` can pause/resume it
- * in perfect sync with the real dismiss timer on hover. */
+ * animate) so it always stays in sync with the real dismiss timer. */
 function CountdownBar({ toastId, durationMs, color, paused }: { toastId: string; durationMs: number; color: string; paused: boolean }) {
   return (
     <Box sx={{ height: 3, borderRadius: 2, overflow: "hidden", mt: 1.25, background: `${color}22` }}>
@@ -203,8 +199,6 @@ function ToastBody({ toast, style, mascotsEnabled }: { toast: ActiveToast; style
   return null;
 }
 
-const DRAG_DISMISS_THRESHOLD = 90;
-
 export function NotificationPopup({
   toast,
   theme,
@@ -214,9 +208,6 @@ export function NotificationPopup({
   durationMs,
   mascotsEnabled,
   showCounter,
-  isPaused,
-  onHoverChange,
-  onDismiss,
   toastRef,
 }: Props) {
   const style = THEME_STYLES[theme];
@@ -224,16 +215,6 @@ export function NotificationPopup({
 
   const accentColor =
     toast.kind === "funny" && toast.funny ? MOOD_ACCENT[toast.funny.mood] : style.color;
-
-  // dragSnapToOrigin (below) handles the "not dismissed" elastic
-  // snap-back declaratively. If the drag exceeds the threshold we just
-  // tell the parent to dismiss — the toast unmounts and Framer Motion's
-  // `exit` animation plays instead of a manual snap animation.
-  const handleDragEnd = (_: unknown, info: PanInfo) => {
-    if (Math.abs(info.offset.x) > DRAG_DISMISS_THRESHOLD) {
-      onDismiss();
-    }
-  };
 
   return (
     <motion.div
@@ -243,15 +224,6 @@ export function NotificationPopup({
       animate={variant.animate}
       exit={variant.exit}
       transition={variant.transition ?? DEFAULT_TRANSITION}
-      drag="x"
-      dragElastic={0.3}
-      dragMomentum={false}
-      dragSnapToOrigin
-      onDragEnd={handleDragEnd}
-      onHoverStart={() => onHoverChange(true)}
-      onHoverEnd={() => onHoverChange(false)}
-      style={{ cursor: "grab", touchAction: "none" }}
-      whileDrag={{ cursor: "grabbing" }}
     >
       <Box
         sx={{
@@ -271,7 +243,7 @@ export function NotificationPopup({
         <ToastHeader />
         <ToastBody toast={toast} style={style} mascotsEnabled={mascotsEnabled} />
         {showCounter && (
-          <CountdownBar toastId={toast.id} durationMs={durationMs} color={accentColor} paused={isPaused} />
+          <CountdownBar toastId={toast.id} durationMs={durationMs} color={accentColor} paused={false} />
         )}
       </Box>
     </motion.div>
