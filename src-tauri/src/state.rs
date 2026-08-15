@@ -1,6 +1,8 @@
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Mutex;
 
+use crate::clipboard::ClipboardEventPayload;
+
 /// Process-wide state shared between the clipboard watcher thread,
 /// the Ctrl+C key-listener thread, and Tauri command handlers.
 pub struct AppState {
@@ -10,6 +12,11 @@ pub struct AppState {
     pub last_change_at: AtomicU64,
     /// Consecutive Ctrl+C presses observed with no clipboard change.
     pub repeat_count: AtomicU32,
+    /// The last `clipboard://changed` payload the poller emitted. When
+    /// Funny Mode is off, a repeat Ctrl+C on the *same* content (which
+    /// the poller won't emit for again) re-uses this to build the
+    /// per-press copy notification.
+    pub last_payload: Mutex<Option<ClipboardEventPayload>>,
     pub settings: Mutex<Settings>,
     /// Unix-millis timestamp until which notifications are snoozed.
     /// 0 means "not snoozed". Deliberately NOT part of `Settings` /
@@ -24,6 +31,7 @@ impl Default for AppState {
             last_hash: Mutex::new(0),
             last_change_at: AtomicU64::new(0),
             repeat_count: AtomicU32::new(0),
+            last_payload: Mutex::new(None),
             settings: Mutex::new(Settings::default()),
             snoozed_until_ms: AtomicU64::new(0),
         }

@@ -7,6 +7,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 use crate::apps;
+use crate::clipboard::ClipboardEventPayload;
 use crate::funny_messages::{random_message, Mood};
 use crate::snooze;
 use crate::state::{AppState, Settings};
@@ -128,11 +129,68 @@ pub(crate) fn handle_repeat_attempt(app: &AppHandle, state: &Arc<AppState>, sett
 
 fn on_ctrl_c(app: &AppHandle, state: &Arc<AppState>) {
     let settings = state.settings.lock().unwrap().clone();
-    if !settings.funny_mode_enabled {
+
+    if snooze::is_snoozed(state) {
         return;
     }
 
-    if snooze::is_snoozed(state) {
+    let foreground_exe = apps::foreground_process_exe_name().unwrap_or_default();
+
+    if !settings.funny_mode_enabled {
+        // Funny Mode is off — but the user still wants a copy
+        // notification on *every* Ctrl+C, including repeats of the same
+        // content. A real clipboard change is already toasted by the
+        // poller ("clipboard://changed"); if no change landed after a
+        // settle delay, this press was a repeat, so we emit the copy
+        // notification ourselves with a running "Copied ×N" count.
+        if apps::is_funny_mode_excluded(&foreground_exe, &settings) {
+            return;
+        }
+        let last_change = state.last_change_at.load(Ordering::SeqCst);
+        if last_change == 0 || now_millis() - last_change > RECENT_COPY_WINDOW_MS {
+            return;
+        }
+
+        // Give the poller a chance to observe (and toast) a real change
+        // before deciding this press re-copied the same content.
+        let settle = std::cmp::min(settings.poll_interval_ms + 50, 500);
+        thread::sleep(std::time::Duration::from_millis(settle));
+
+        if state.last_change_at.load(Ordering::SeqCst) != last_change {
+            // A real change landed — the poller already emitted its copy
+            // event (and bumped the count). Nothing else to do.
+            return;
+        }
+
+        let Some(last) = state.last_payload.lock().unwrap().clone() else {
+            return;
+        };
+        let should_notify = match last.kind {
+            crate::clipboard::ClipboardKind::Text
+            | crate::clipboard::ClipboardKind::RichText
+            | crate::clipboard::ClipboardKind::Html => settings.notify_on_text,
+            crate::clipboard::ClipboardKind::Image => settings.notify_on_image,
+            crate::clipboard::ClipboardKind::File
+            | crate::clipboard::ClipboardKind::Files
+            | crate::clipboard::ClipboardKind::Folder => true,
+        };
+        if !should_notify {
+            return;
+        }
+        let payload = ClipboardEventPayload {
+            kind: last.kind,
+            preview: last.preview,
+            size_bytes: last.size_bytes,
+            dimensions: last.dimensions,
+            item_count: last.item_count,
+            timestamp: now_millis(),
+            is_duplicate: true,
+            suppressed: false,
+        };
+        if let Err(e) = app.emit("clipboard://changed", payload) {
+            eprintln!("[stopc] failed to emit repeat copy event: {e}");
+        }
+        crate::notification::show_notification(app, state, "copy");
         return;
     }
 
@@ -144,7 +202,6 @@ fn on_ctrl_c(app: &AppHandle, state: &Arc<AppState>) {
     // triggered a false "did you forget to copy?" popup. We now check
     // the foreground app and skip entirely for known terminals/shells
     // and for anything the user excluded on the Exclusions page.
-    let foreground_exe = apps::foreground_process_exe_name().unwrap_or_default();
     if apps::is_funny_mode_excluded(&foreground_exe, &settings) {
         return;
     }

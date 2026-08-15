@@ -137,8 +137,12 @@ function NotificationWindow() {
         // Suppressed = snoozed, or copied while an excluded app was in
         // the foreground. Still tracked in the dashboard's history via
         // useClipboardWatcher — just no toast, no sound.
-        if (event.payload.isDuplicate || event.payload.suppressed) return;
+        if (event.payload.suppressed) return;
         const current = useSettingsStore.getState().settings;
+        // Duplicate copies (same content re-copied) only surface as
+        // toasts when Funny Mode is OFF — with it on, they're Funny
+        // Mode's job.
+        if (event.payload.isDuplicate && current.funnyModeEnabled) return;
         showToast(
           { id: `copy-${event.payload.timestamp}`, kind: "copy", copy: event.payload },
           current.durationMs,

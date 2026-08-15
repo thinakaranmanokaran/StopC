@@ -73,6 +73,11 @@ pub fn spawn_watcher(app: AppHandle, state: std::sync::Arc<AppState>) {
                     };
                     let is_snoozed = snooze::is_snoozed(&state);
                     payload.suppressed = is_excluded || is_snoozed;
+
+                    // Remember the payload so the Ctrl+C key listener can
+                    // re-emit it when the user re-copies the *same* content
+                    // while Funny Mode is off.
+                    *state.last_payload.lock().unwrap() = Some(payload.clone());
                 }
 
                 if let Err(e) = app.emit("clipboard://changed", payload.clone()) {
