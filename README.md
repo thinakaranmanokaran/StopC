@@ -420,6 +420,12 @@ None of these affect the overall architecture — they're the normal
 - [ ] Unit/integration/clipboard/notification/performance test suites
 - [ ] CI matrix building all three installer targets
 
+## Links
+
+- [Website](https://stopc.netlify.app/)
+- [Privacy Policy](https://stopc.netlify.app/privacy/)
+- [Support & FAQ](https://stopc.netlify.app/support/)
+
 ## Author
 
 **Thinakaran Manokaran** — [thinakaran.dev](https://thinakaran.dev/)

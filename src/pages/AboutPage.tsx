@@ -31,6 +31,8 @@ import {
 } from "@/services/updateService";
 
 const GITHUB_URL = "https://github.com/thinakaranmanokaran/StopC";
+const PRIVACY_URL = "https://stopc.netlify.app/privacy/";
+const SUPPORT_URL = "https://stopc.netlify.app/support/";
 
 const FEATURES = [
   "Clipboard monitoring with instant visual confirmation",
@@ -262,6 +264,24 @@ export default function AboutPage() {
               sx={{ borderRadius: "14px" }}
             >
               GitHub
+            </Button>
+          </Stack>
+          <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 2 }}>
+            <Button
+              size="small"
+              color="inherit"
+              onClick={() => window.open(PRIVACY_URL, "_blank", "noopener,noreferrer")}
+              sx={{ color: "text.secondary", textTransform: "none" }}
+            >
+              Privacy Policy
+            </Button>
+            <Button
+              size="small"
+              color="inherit"
+              onClick={() => window.open(SUPPORT_URL, "_blank", "noopener,noreferrer")}
+              sx={{ color: "text.secondary", textTransform: "none" }}
+            >
+              Support &amp; FAQ
             </Button>
           </Stack>
         </motion.div>
