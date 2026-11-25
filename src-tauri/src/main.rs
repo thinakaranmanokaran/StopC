@@ -2,6 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod apps;
+#[cfg(all(windows, feature = "msix"))]
+mod autostart_msix;
 mod clipboard;
 mod commands;
 mod funny_messages;
@@ -9,6 +11,7 @@ mod funny_mode;
 mod notification;
 mod snooze;
 mod state;
+#[cfg(not(feature = "msix"))]
 mod updater;
 
 use std::sync::Arc;
@@ -27,7 +30,7 @@ use state::AppState;
 const AUTOSTART_MARKER: &str = "--autostart";
 
 fn main() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         // Must be the first plugin registered. When the app is already
         // running (in the tray) and the user launches it again — Start
         // Menu, Search, Desktop icon — the OS would normally spawn a
@@ -44,11 +47,20 @@ fn main() {
             }
         }))
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_autostart::init(
+        .plugin(tauri_plugin_notification::init());
+
+    // MSIX builds use the manifest-declared StartupTask instead of the
+    // registry-based autostart plugin (which is silently sandboxed in
+    // MSIX containers).
+    #[cfg(not(feature = "msix"))]
+    {
+        builder = builder.plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![AUTOSTART_MARKER]),
-        ))
+        ));
+    }
+
+    builder
         .manage(Arc::new(AppState::default()))
         .setup(|app| {
             let state: Arc<AppState> = app.state::<Arc<AppState>>().inner().clone();
@@ -90,12 +102,14 @@ fn main() {
             let stats = MenuItem::with_id(app, "stats", "Statistics", true, None::<&str>)?;
             let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
             let exclusions = MenuItem::with_id(app, "exclusions", "Exclusions", true, None::<&str>)?;
+            #[cfg(not(feature = "msix"))]
             let check_updates =
                 MenuItem::with_id(app, "check_updates", "Check for Updates", true, None::<&str>)?;
             let about = MenuItem::with_id(app, "about", "About", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let separator = PredefinedMenuItem::separator(app)?;
 
+            #[cfg(not(feature = "msix"))]
             let tray_menu = Menu::with_items(
                 app,
                 &[
@@ -111,6 +125,25 @@ fn main() {
                     &separator,
                     &about,
                     &check_updates,
+                    &quit,
+                ],
+            )?;
+
+            #[cfg(feature = "msix")]
+            let tray_menu = Menu::with_items(
+                app,
+                &[
+                    &open,
+                    &pause,
+                    &funny,
+                    &snooze_item,
+                    &cancel_snooze_item,
+                    &separator,
+                    &stats,
+                    &settings,
+                    &exclusions,
+                    &separator,
+                    &about,
                     &quit,
                 ],
             )?;
@@ -168,6 +201,7 @@ fn main() {
                         "about" => {
                             let _ = app.emit("tray://navigate", "about");
                         }
+                        #[cfg(not(feature = "msix"))]
                         "check_updates" => {
                             let _ = app.emit("tray://navigate", "about");
                             let _ = app.emit("tray://trigger-update-check", ());
@@ -194,20 +228,42 @@ fn main() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            commands::get_settings,
-            commands::save_settings,
-            commands::reset_settings,
-            commands::record_copy_attempt,
-            commands::hide_notification_window,
-            commands::resize_notification_window,
-            apps::list_installed_apps_cmd,
-            snooze::get_snooze_state,
-            snooze::set_snooze,
-            snooze::cancel_snooze,
-            updater::check_for_updates,
-            updater::download_and_install_update,
-        ])
+        .invoke_handler({
+            // The updater commands are only available in the EXE build.
+            // The MSIX/Store build relies on Windows Store updates.
+            #[cfg(not(feature = "msix"))]
+            {
+                tauri::generate_handler![
+                    commands::get_settings,
+                    commands::save_settings,
+                    commands::reset_settings,
+                    commands::record_copy_attempt,
+                    commands::hide_notification_window,
+                    commands::resize_notification_window,
+                    apps::list_installed_apps_cmd,
+                    snooze::get_snooze_state,
+                    snooze::set_snooze,
+                    snooze::cancel_snooze,
+                    updater::check_for_updates,
+                    updater::download_and_install_update,
+                ]
+            }
+            #[cfg(feature = "msix")]
+            {
+                tauri::generate_handler![
+                    commands::get_settings,
+                    commands::save_settings,
+                    commands::reset_settings,
+                    commands::record_copy_attempt,
+                    commands::hide_notification_window,
+                    commands::resize_notification_window,
+                    apps::list_installed_apps_cmd,
+                    snooze::get_snooze_state,
+                    snooze::set_snooze,
+                    snooze::cancel_snooze,
+                ]
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running StopC");
 }

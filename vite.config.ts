@@ -5,6 +5,12 @@ import path from "path";
 // Tauri expects a fixed port and relative asset paths.
 export default defineConfig({
   plugins: [react()],
+  define: {
+    // When building for the Microsoft Store (MSIX), set
+    // `VITE_MSIX_BUILD=true` to disable the in-app GitHub updater UI
+    // (the Store handles updates instead).
+    __MSIX_BUILD__: JSON.stringify(!!process.env.VITE_MSIX_BUILD),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),

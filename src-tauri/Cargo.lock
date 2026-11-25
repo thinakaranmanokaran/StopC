@@ -3780,6 +3780,8 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tokio",
  "winapi",
+ "windows",
+ "windows-future",
  "winreg 0.52.0",
 ]
 

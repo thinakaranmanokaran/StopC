@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap5 uap10 rescap">
+
+  <!--
+    IMPORTANT FOR MICROSOFT STORE SUBMISSION:
+    Replace Identity Name and Publisher with the exact values from:
+    Partner Center -> Your MSIX App -> Product management -> Product identity.
+    (Or pass IdentityName and Publisher parameters to scripts/package-msix.ps1.)
+  -->
+  <Identity
+    Name="__IDENTITY_NAME__"
+    Publisher="__PUBLISHER__"
+    Version="__VERSION__"
+    ProcessorArchitecture="__ARCH__" />
+
+  <Properties>
+    <DisplayName>StopC</DisplayName>
+    <PublisherDisplayName>__PUBLISHER_DISPLAY_NAME__</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <!--
+      MinVersion 10.0.19041.0 (Windows 10 v2004) guarantees support for
+      uap10:Parameters on windows.startupTask and passes Store minimum
+      OS validation.
+    -->
+    <TargetDeviceFamily
+      Name="Windows.Desktop"
+      MinVersion="10.0.19041.0"
+      MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-US" />
+  </Resources>
+
+  <Applications>
+    <Application
+      Id="StopC"
+      Executable="stopc.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="StopC"
+        Description="Copy Once. Trust Forever. — a clipboard confidence app."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile
+          ShortName="StopC"
+          Square71x71Logo="Assets\Square71x71Logo.png"
+          Wide310x150Logo="Assets\Wide310x150Logo.png"
+          Square310x310Logo="Assets\Square310x310Logo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!--
+          Replaces registry-based autostart inside MSIX containers.
+          TaskId must match STARTUP_TASK_ID in src-tauri/src/autostart_msix.rs.
+          The autostart parameter below matches AUTOSTART_MARKER in src-tauri/src/main.rs
+          so Windows login launches stay minimized in the system tray.
+        -->
+        <uap5:Extension
+          Category="windows.startupTask"
+          Executable="stopc.exe"
+          EntryPoint="Windows.FullTrustApplication"
+          uap10:Parameters="--autostart">
+          <uap5:StartupTask
+            TaskId="StopCAutostart"
+            Enabled="true"
+            DisplayName="StopC" />
+        </uap5:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- Required for packaged Win32/Tauri desktop apps; justify in Partner Center Submission Options. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

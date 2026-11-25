@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use tauri::{AppHandle, Emitter, State};
+
+#[cfg(not(feature = "msix"))]
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::notification::{hide_notification, position_notification_window};
@@ -11,14 +13,24 @@ use crate::state::{AppState, Settings};
 /// entry. Runs on every settings sync — including the first-run load,
 /// where `autoStart` defaults to true — so the backend's autostart
 /// plugin state always matches what the frontend has persisted.
-fn sync_autostart(app: &AppHandle, auto_start: bool) {
-    let result = if auto_start {
-        app.autolaunch().enable()
-    } else {
-        app.autolaunch().disable()
-    };
-    if let Err(e) = result {
-        eprintln!("[stopc] failed to apply auto-start={auto_start}: {e}");
+fn sync_autostart(#[allow(unused_variables)] app: &AppHandle, auto_start: bool) {
+    // MSIX builds use the WinRT StartupTask API (declared in the MSIX
+    // manifest) instead of the registry-based plugin.
+    #[cfg(all(windows, feature = "msix"))]
+    {
+        crate::autostart_msix::sync_autostart(auto_start);
+    }
+
+    #[cfg(not(feature = "msix"))]
+    {
+        let result = if auto_start {
+            app.autolaunch().enable()
+        } else {
+            app.autolaunch().disable()
+        };
+        if let Err(e) = result {
+            eprintln!("[stopc] failed to apply auto-start={auto_start}: {e}");
+        }
     }
 }
 

@@ -66,3 +66,42 @@ jobs:
             Download the installer for your platform from the assets below.
           releaseDraft: false
           prerelease: false
+
+  build-msix:
+    name: Build Store MSIX (windows-latest)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build StopC for MSIX
+        env:
+          VITE_MSIX_BUILD: "true"
+        run: npm run tauri build -- --no-bundle --target x86_64-pc-windows-msvc --features msix
+
+      - name: Package Store MSIX
+        shell: pwsh
+        env:
+          MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
+          MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+          MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
+        run: ./scripts/package-msix.ps1 -SkipBuild -Arch x64
+
+      - name: Upload Store MSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stopc-store-msix-x64
+          path: src-tauri/target/msix/*.msix

@@ -42,9 +42,18 @@ winapi = { version = "0.3", features = ["winuser", "processthreadsapi", "psapi",
 # Reads the "installed programs" list from the Uninstall registry keys
 # for the Exclusions page.
 winreg = "0.52"
+# WinRT APIs for the MSIX StartupTask (autostart) feature.
+windows = { version = "0.61", features = ["ApplicationModel", "Foundation", "Win32_System_WinRT"], optional = true }
+# `windows` depends on windows-future with default-features = false, which
+# omits the `IntoFuture` impls required to `.await` IAsyncOperation<T>.
+windows-future = { version = "0.2", features = ["std"], optional = true }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
+# Build for Microsoft Store (MSIX packaging). Swaps autostart from the
+# registry-based plugin to the native WinRT StartupTask API and disables
+# the GitHub-based in-app updater (the Store handles updates instead).
+msix = ["windows", "windows-future"]
 
 [[bin]]
 name = "stopc"

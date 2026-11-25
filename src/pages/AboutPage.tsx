@@ -98,8 +98,10 @@ export default function AboutPage() {
 
   // The tray's "Check for Updates" item navigates here and fires this
   // event so the check starts automatically — the tray itself has no
-  // surface to show progress on.
+  // surface to show progress on. Disabled in MSIX/Store builds where
+  // the Microsoft Store manages updates.
   useEffect(() => {
+    if (__MSIX_BUILD__) return;
     const unlistenPromise = listen("tray://trigger-update-check", () => {
       runCheck();
     });
@@ -246,15 +248,19 @@ export default function AboutPage() {
         {/* Actions — Check for Updates + GitHub, both at the bottom */}
         <motion.div custom={4} initial="hidden" animate="visible" variants={fadeUp}>
           <Stack direction="row" spacing={1.5} sx={{ mt: 1 }}>
-            <Button
-              variant="contained"
-              fullWidth
-              startIcon={<RefreshCw size={16} />}
-              onClick={runCheck}
-              sx={{ borderRadius: "14px" }}
-            >
-              Check for Updates
-            </Button>
+            {/* The in-app updater is disabled in MSIX/Store builds —
+                the Microsoft Store handles updates automatically. */}
+            {!__MSIX_BUILD__ && (
+              <Button
+                variant="contained"
+                fullWidth
+                startIcon={<RefreshCw size={16} />}
+                onClick={runCheck}
+                sx={{ borderRadius: "14px" }}
+              >
+                Check for Updates
+              </Button>
+            )}
             <Button
               variant="outlined"
               color="inherit"
