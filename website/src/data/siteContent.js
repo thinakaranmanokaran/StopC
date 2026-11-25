@@ -22,9 +22,13 @@ export const SITE = {
     url: "https://github.com/thinakaranmanokaran/StopC/blob/main/LICENSE",
   },
   links: {
+    installerDownload: "/StopC_1.2.0_x64-setup.exe",
+    installerFileName: "StopC_1.2.0_x64-setup.exe",
     githubRepo: "https://github.com/thinakaranmanokaran/StopC",
     githubReleases: "https://github.com/thinakaranmanokaran/StopC/releases/latest",
     githubIssues: "https://github.com/thinakaranmanokaran/StopC/issues",
+    installerDownload: "/StopC_1.2.0_x64-setup.exe",
+    installerFileName: "StopC_1.2.0_x64-setup.exe",
     // Paste your live Microsoft Store URL here once Store certification is published, e.g.:
     // "https://apps.microsoft.com/detail/..."
     microsoftStoreUrl: "",
@@ -115,7 +119,12 @@ export const HOME = {
     },
     githubRelease: {
       label: "Download for Windows via GitHub Releases",
-      note: "Free MIT-licensed Windows installer (.exe / .msi) available directly on GitHub.",
+      note: "Free MIT-licensed Windows installer (StopC_1.2.0_x64-setup.exe) for Windows 10 & 11.",
+    },
+    installer: {
+      label: "Download for Windows",
+      fileName: "StopC_1.2.0_x64-setup.exe",
+      note: "Free MIT-licensed Windows installer (StopC_1.2.0_x64-setup.exe) for Windows 10 & 11.",
     },
   },
   howItWorks: {

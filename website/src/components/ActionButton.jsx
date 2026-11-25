@@ -23,6 +23,7 @@ export function ActionButton({
   children,
   href,
   onClick,
+  download = false,
   variant = "secondary",
   size = "md",
   icon = null,
@@ -86,7 +87,8 @@ export function ActionButton({
   );
 
   if (href && !disabled) {
-    const isInternal = href.startsWith("/") && !href.startsWith("//");
+    const isFileDownload = Boolean(download) || /\.(exe|msi|zip|tar\.gz)$/i.test(href);
+    const isInternal = href.startsWith("/") && !href.startsWith("//") && !isFileDownload;
     const isExternal = href.startsWith("http") || href.startsWith("mailto:");
 
     const handleClick = (e) => {
@@ -107,6 +109,7 @@ export function ActionButton({
     return (
       <a
         href={href}
+        download={download ? (typeof download === "string" ? download : true) : undefined}
         onClick={handleClick}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
