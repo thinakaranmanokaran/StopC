@@ -31,9 +31,9 @@ export const SITE = {
     installerFileName: "StopC_1.2.0_x64-setup.exe",
     // Paste your live Microsoft Store URL here once Store certification is published, e.g.:
     // "https://apps.microsoft.com/detail/..."
-    microsoftStoreUrl: "",
+    microsoftStoreUrl: "https://apps.microsoft.com/detail/9NR7N10N3WXK?hl=en-us&gl=IN&ocid=pdpshare",
     // Optional public support/privacy email (renders mailto: automatically if non-empty):
-    contactEmail: "",
+    contactEmail: "me@thinakaran.dev",
   },
   nav: [
     { label: "Home", href: "/" },
