@@ -1,6 +1,7 @@
-import { motion, type Target, type TargetAndTransition, type Transition } from "framer-motion";
+import { motion, type PanInfo, type Target, type TargetAndTransition, type Transition } from "framer-motion";
 import { Box, Stack, Typography } from "@mui/material";
 import type { Ref } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { CheckCircle2, Image as ImageIcon, Files, Folder, FileText, Info } from "lucide-react";
 import type { ActiveToast } from "@/types/toast";
 import type { NotificationAnimation, NotificationTheme } from "@/store/settingsStore";
@@ -20,6 +21,11 @@ interface Props {
   durationMs: number;
   mascotsEnabled: boolean;
   showCounter: boolean;
+  /** Fraction of the toast width needed to swipe it away (>1 disables). */
+  swipeDismissRatio: number;
+  isPaused: boolean;
+  onHoverChange: (hovering: boolean) => void;
+  onDismiss: () => void;
   /** Attached to the toast's motion.div so the notification window can
    *  measure the rendered toast and shrink-wrap itself around it. */
   toastRef?: Ref<HTMLDivElement>;
@@ -208,6 +214,10 @@ export function NotificationPopup({
   durationMs,
   mascotsEnabled,
   showCounter,
+  swipeDismissRatio,
+  isPaused,
+  onHoverChange,
+  onDismiss,
   toastRef,
 }: Props) {
   const style = THEME_STYLES[theme];
@@ -215,6 +225,21 @@ export function NotificationPopup({
 
   const accentColor =
     toast.kind === "funny" && toast.funny ? MOOD_ACCENT[toast.funny.mood] : style.color;
+
+  // Free-follow drag with elastic snap-back — the same smooth feel as the
+  // original swipe-to-dismiss. `info.offset` is pointer travel, so the
+  // The configured threshold is measured against the toast's width.
+  const handleDragStart = () => {
+    invoke("set_notification_dragging", { dragging: true }).catch(() => {});
+  };
+
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    invoke("set_notification_dragging", { dragging: false }).catch(() => {});
+    const width = (event.currentTarget as HTMLElement | null)?.offsetWidth ?? 300;
+    if (Math.abs(info.offset.x) >= width * swipeDismissRatio) {
+      onDismiss();
+    }
+  };
 
   return (
     <motion.div
@@ -224,6 +249,17 @@ export function NotificationPopup({
       animate={variant.animate}
       exit={variant.exit}
       transition={variant.transition ?? DEFAULT_TRANSITION}
+      drag="x"
+      dragElastic={0.3}
+      dragMomentum={false}
+      dragSnapToOrigin
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onHoverStart={() => onHoverChange(true)}
+      onHoverEnd={() => onHoverChange(false)}
+      style={{ cursor: "grab", touchAction: "none" }}
+      whileHover={{ scale: 1.015 }}
+      whileDrag={{ cursor: "grabbing", scale: 1.045, filter: "brightness(1.06)" }}
     >
       <Box
         sx={{
@@ -243,7 +279,7 @@ export function NotificationPopup({
         <ToastHeader />
         <ToastBody toast={toast} style={style} mascotsEnabled={mascotsEnabled} />
         {showCounter && (
-          <CountdownBar toastId={toast.id} durationMs={durationMs} color={accentColor} paused={false} />
+          <CountdownBar toastId={toast.id} durationMs={durationMs} color={accentColor} paused={isPaused} />
         )}
       </Box>
     </motion.div>

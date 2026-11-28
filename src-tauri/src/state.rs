@@ -83,6 +83,9 @@ pub struct Settings {
     pub notify_on_image: bool,
     /// Show the countdown progress bar along the bottom of the toast.
     pub show_counter: bool,
+    /// Fraction of the toast width that must be swiped to dismiss it.
+    /// Values > 1 effectively disable swipe-to-dismiss.
+    pub swipe_dismiss_ratio: f32,
     /// Set via the first-run name screen; editable in Settings. Empty
     /// string means "not set" — Rust doesn't otherwise use this value,
     /// it's purely carried through for cross-window sync.
@@ -121,6 +124,7 @@ impl Default for Settings {
             notify_on_text: true,
             notify_on_image: true,
             show_counter: true,
+            swipe_dismiss_ratio: 0.7,
             user_name: String::new(),
             snooze_duration_seconds: 600,
             excluded_apps: Vec::new(),

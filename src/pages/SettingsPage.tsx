@@ -8,6 +8,7 @@ import {
   Box,
   Tooltip,
   TextField,
+  Slider,
 } from "@mui/material";
 import {
   Bell,
@@ -286,6 +287,35 @@ export default function SettingsPage() {
                     { value: 5000, label: "5s" },
                     { value: 8000, label: "8s" },
                   ]}
+                />
+              </Box>
+
+              <Box>
+                <Stack direction="row" alignItems="baseline" justifyContent="space-between">
+                  <Typography variant="body1" fontWeight={500}>Dismissal Threshold</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {settings.swipeDismissRatio >= 1.2
+                      ? "Off"
+                      : `${Math.round(settings.swipeDismissRatio * 100)}%`}
+                  </Typography>
+                </Stack>
+                <Slider
+                  value={Math.min(settings.swipeDismissRatio, 1.2)}
+                  onChange={(_, value) => update("swipeDismissRatio", value as number)}
+                  min={0.2}
+                  max={1.2}
+                  step={0.1}
+                  valueLabelDisplay="auto"
+                  valueLabelFormat={(value) =>
+                    value >= 1.2 ? "Off" : `${Math.round(value * 100)}%`
+                  }
+                  marks={[
+                    { value: 0.2, label: "20%" },
+                    { value: 0.7, label: "70%" },
+                    { value: 1, label: "100%" },
+                    { value: 1.2, label: "Off" },
+                  ]}
+                  sx={{ mt: 1.5 }}
                 />
               </Box>
 

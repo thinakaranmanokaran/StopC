@@ -95,6 +95,13 @@ pub fn hide_notification_window(app: AppHandle) {
     hide_notification(&app);
 }
 
+/// Lets the cursor watcher know a drag gesture is in progress, so the
+/// window stays interactive even if the pointer leaves the toast rect.
+#[tauri::command]
+pub fn set_notification_dragging(dragging: bool) {
+    crate::notification::set_dragging(dragging);
+}
+
 /// Shrinks the transparent notification window to just the rendered toast
 /// (see notification.rs) so it doesn't leave an invisible click-blocking
 /// rectangle over the screen. Called by the notification window's

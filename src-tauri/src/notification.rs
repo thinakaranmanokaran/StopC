@@ -1,6 +1,8 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
-use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, Monitor};
+use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, Monitor, WebviewWindow};
 
 use crate::state::AppState;
 
@@ -10,6 +12,15 @@ const WINDOW_LABEL: &str = "notification";
 // notification window — see src/notification-main.tsx's edge-aligned
 // flex wrapper.
 const MARGIN: f64 = 8.0;
+
+/// Set by the frontend while the user is dragging the toast. Keeps the
+/// window interactive even when the pointer leaves the (small, shrink-
+/// wrapped) window rect mid-drag.
+static DRAGGING: AtomicBool = AtomicBool::new(false);
+
+pub fn set_dragging(dragging: bool) {
+    DRAGGING.store(dragging, Ordering::Relaxed);
+}
 
 /// Positions the notification window at the configured screen corner
 /// and shows it. Hiding is NOT handled here — the frontend owns that
@@ -39,16 +50,9 @@ pub fn show_notification(app: &AppHandle, state: &Arc<AppState>, _kind: &str) {
     let _ = window.set_always_on_top(true);
     let _ = window.show();
     let _ = window.set_always_on_top(true);
-    // The toast is a pure overlay: make the whole window click-through so
-    // it can never block the screen underneath. Without this, a
-    // transparent always-on-top webview still swallows mouse clicks over
-    // its entire rectangle even where nothing is drawn — an invisible
-    // dead zone over whatever sits behind it (Chrome's bookmark bar, or
-    // VSCode's minimize/close buttons), which looks like a frozen UI.
-    // Since clicks pass through, hover-based interactions (pause-on-hover,
-    // drag-to-dismiss) are intentionally gone; the frontend just lets the
-    // countdown timer run.
-    let _ = window.set_ignore_cursor_events(true);
+    // Click-through is owned by `start_cursor_watcher`: the window passes
+    // clicks through while idle, but becomes interactive whenever the
+    // pointer is over the toast so hover-pause and drag-to-dismiss work.
 }
 
 /// Hides the notification window. Called by the frontend once its own
@@ -96,12 +100,55 @@ pub fn resize_notification_window(app: &AppHandle, state: &Arc<AppState>, width:
         let (x, y) = compute_position(&monitor, &position, width, height);
         let _ = window.set_position(LogicalPosition::new(x, y));
     }
-    // Resizing shouldn't clear it, but re-assert so the window always
-    // stays click-through no matter what path it was shown through.
-    let _ = window.set_ignore_cursor_events(true);
 }
 
-fn logical_size(window: &tauri::WebviewWindow) -> (f64, f64) {
+/// Keeps the transparent toast window click-through except while the
+/// pointer is actually over it. This restores hover-pause and drag-to-
+/// dismiss without reintroducing an invisible dead zone over other apps.
+#[cfg(windows)]
+pub fn start_cursor_watcher(app: AppHandle) {
+    use winapi::shared::windef::POINT;
+    use winapi::um::winuser::GetCursorPos;
+
+    std::thread::spawn(move || {
+        let Some(window) = app.get_webview_window(WINDOW_LABEL) else {
+            return;
+        };
+        let mut interactive = false;
+
+        loop {
+            std::thread::sleep(Duration::from_millis(80));
+
+            // During a drag the pointer can travel outside the small
+            // shrink-wrapped window; stay interactive until it ends.
+            let inside = DRAGGING.load(Ordering::Relaxed)
+                || (window.is_visible().unwrap_or(false)
+                    && unsafe {
+                        let mut pt = POINT { x: 0, y: 0 };
+                        GetCursorPos(&mut pt) != 0
+                            && match (window.outer_position(), window.outer_size()) {
+                                (Ok(pos), Ok(size)) => {
+                                    pt.x >= pos.x
+                                        && pt.x < pos.x.saturating_add(size.width as i32)
+                                        && pt.y >= pos.y
+                                        && pt.y < pos.y.saturating_add(size.height as i32)
+                                }
+                                _ => false,
+                            }
+                    });
+
+            if inside != interactive {
+                let _ = window.set_ignore_cursor_events(!inside);
+                interactive = inside;
+            }
+        }
+    });
+}
+
+#[cfg(not(windows))]
+pub fn start_cursor_watcher(_app: AppHandle) {}
+
+fn logical_size(window: &WebviewWindow) -> (f64, f64) {
     let size = window
         .outer_size()
         .unwrap_or(tauri::PhysicalSize {

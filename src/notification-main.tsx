@@ -45,19 +45,21 @@ function NotificationWindow() {
   const replaceSettings = useSettingsStore((s) => s.replaceSettings);
 
   const [toast, setToast] = useState<ActiveToast | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
   const toastRef = useRef<HTMLDivElement | null>(null);
 
-  // Single auto-dismiss timer. The notification window is fully
-  // click-through (see src-tauri/src/notification.rs), so there's no
-  // hover-pause or drag-to-dismiss interaction anymore — the toast just
-  // lives out its `durationMs` and the frontend hides the window.
+  // Pausable-timer bookkeeping (refs so they survive re-renders without
+  // re-triggering effects). Hovering the toast pauses the countdown.
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remainingMsRef = useRef(0);
+  const segmentStartRef = useRef(0);
   const durationRef = useRef(0);
 
   const dismiss = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = null;
     setToast(null);
+    setIsPaused(false);
     invoke("hide_notification_window").catch(() => {
       /* window may already be hidden; harmless */
     });
@@ -65,8 +67,26 @@ function NotificationWindow() {
 
   const armTimer = useCallback((ms: number) => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    remainingMsRef.current = ms;
+    segmentStartRef.current = Date.now();
     timerRef.current = setTimeout(dismiss, ms);
   }, [dismiss]);
+
+  const handleHoverChange = useCallback(
+    (hovering: boolean) => {
+      setIsPaused(hovering);
+      if (hovering) {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = null;
+        const elapsed = Date.now() - segmentStartRef.current;
+        remainingMsRef.current = Math.max(0, remainingMsRef.current - elapsed);
+      } else {
+        segmentStartRef.current = Date.now();
+        timerRef.current = setTimeout(dismiss, remainingMsRef.current);
+      }
+    },
+    [dismiss]
+  );
 
   const showToast = useCallback(
     (next: ActiveToast, durationMs: number, playSound: () => void) => {
@@ -235,6 +255,10 @@ function NotificationWindow() {
             durationMs={durationRef.current}
             mascotsEnabled={settings.mascotsEnabled}
             showCounter={settings.showCounter}
+            swipeDismissRatio={settings.swipeDismissRatio}
+            isPaused={isPaused}
+            onHoverChange={handleHoverChange}
+            onDismiss={dismiss}
             toastRef={toastRef}
           />
         )}

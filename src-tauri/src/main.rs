@@ -68,6 +68,7 @@ fn main() {
             // Background threads: clipboard polling + global Ctrl+C listener.
             clipboard::spawn_watcher(app.handle().clone(), state.clone());
             funny_mode::spawn_key_listener(app.handle().clone(), state.clone());
+            notification::start_cursor_watcher(app.handle().clone());
 
             // The main window is created visible (see tauri.conf.json) so
             // Windows initializes its native frame/title bar correctly —
@@ -240,6 +241,7 @@ fn main() {
                     commands::record_copy_attempt,
                     commands::hide_notification_window,
                     commands::resize_notification_window,
+                    commands::set_notification_dragging,
                     apps::list_installed_apps_cmd,
                     snooze::get_snooze_state,
                     snooze::set_snooze,
@@ -257,6 +259,7 @@ fn main() {
                     commands::record_copy_attempt,
                     commands::hide_notification_window,
                     commands::resize_notification_window,
+                    commands::set_notification_dragging,
                     apps::list_installed_apps_cmd,
                     snooze::get_snooze_state,
                     snooze::set_snooze,

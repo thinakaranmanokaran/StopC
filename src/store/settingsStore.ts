@@ -43,6 +43,9 @@ export interface StopCSettings {
   notifyOnImage: boolean;
   /** Show the countdown progress bar along the bottom of the toast. */
   showCounter: boolean;
+  /** Fraction of the toast width that must be swiped to dismiss it.
+   *  Values > 1 effectively disable swipe-to-dismiss. */
+  swipeDismissRatio: number;
   /** Set once via the first-run name screen; editable afterward in Settings. */
   userName: string;
   /** Duration (seconds) applied by the tray "Snooze" item / "Snooze Now" button. */
@@ -69,6 +72,7 @@ export const DEFAULT_SETTINGS: StopCSettings = {
   notifyOnText: true,
   notifyOnImage: true,
   showCounter: true,
+  swipeDismissRatio: 0.7,
   userName: "",
   snoozeDurationSeconds: 600,
   excludedApps: [],
