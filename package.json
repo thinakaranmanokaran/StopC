@@ -1,7 +1,7 @@
 {
   "name": "stopc",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Copy Once. Trust Forever. — a clipboard confidence app.",
   "type": "module",
   "scripts": {

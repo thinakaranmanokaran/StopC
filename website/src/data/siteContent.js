@@ -8,7 +8,7 @@ export const SITE = {
   name: "StopC",
   tagline: "Copy once. Trust forever.",
   siteUrl: "https://stopc.netlify.app",
-  appVersion: "1.2.0",
+  appVersion: "1.0.0",
   appIdentifier: "com.stopc.app",
   language: "en",
   locale: "en_US",
@@ -22,13 +22,14 @@ export const SITE = {
     url: "https://github.com/thinakaranmanokaran/StopC/blob/main/LICENSE",
   },
   links: {
-    installerDownload: "/StopC_1.2.0_x64-setup.exe",
-    installerFileName: "StopC_1.2.0_x64-setup.exe",
+    // Stable download endpoints. The versioned installer lives in
+    // website/public under a version-free name, so the site never has to
+    // change its URL when a new build is published.
+    installerDownload: "/download",
+    msixDownload: "/download/msix",
     githubRepo: "https://github.com/thinakaranmanokaran/StopC",
     githubReleases: "https://github.com/thinakaranmanokaran/StopC/releases/latest",
     githubIssues: "https://github.com/thinakaranmanokaran/StopC/issues",
-    installerDownload: "/StopC_1.2.0_x64-setup.exe",
-    installerFileName: "StopC_1.2.0_x64-setup.exe",
     // Paste your live Microsoft Store URL here once Store certification is published, e.g.:
     // "https://apps.microsoft.com/detail/..."
     microsoftStoreUrl: "https://apps.microsoft.com/detail/9NR7N10N3WXK?hl=en-us&gl=IN&ocid=pdpshare",
@@ -119,12 +120,7 @@ export const HOME = {
     },
     githubRelease: {
       label: "Download for Windows via GitHub Releases",
-      note: "Free MIT-licensed Windows installer (StopC_1.2.0_x64-setup.exe) for Windows 10 & 11.",
-    },
-    installer: {
-      label: "Download for Windows",
-      fileName: "StopC_1.2.0_x64-setup.exe",
-      note: "Free MIT-licensed Windows installer (StopC_1.2.0_x64-setup.exe) for Windows 10 & 11.",
+      note: "Free MIT-licensed Windows installer for Windows 10 & 11.",
     },
   },
   howItWorks: {

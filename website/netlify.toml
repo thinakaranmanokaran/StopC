@@ -12,6 +12,18 @@
   to = "/support/"
   status = 301
 
+# Stable download endpoints. These always point at the current installer,
+# so the site link never contains a versioned filename.
+[[redirects]]
+  from = "/download"
+  to = "/StopC_x64-setup.exe"
+  status = 302
+
+[[redirects]]
+  from = "/download/msix"
+  to = "/StopC_x64.msix"
+  status = 302
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -23,7 +35,14 @@
   for = "/*.exe"
   [headers.values]
     Content-Type = "application/vnd.microsoft.portable-executable"
-    Content-Disposition = "attachment; filename=\"StopC_1.2.0_x64-setup.exe\""
+    Content-Disposition = "attachment; filename=\"StopC_x64-setup.exe\""
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/*.msix"
+  [headers.values]
+    Content-Type = "application/octet-stream"
+    Content-Disposition = "attachment; filename=\"StopC_x64.msix\""
     Cache-Control = "public, max-age=604800"
 
 [[headers]]
@@ -60,17 +79,3 @@
   [headers.values]
     Content-Type = "application/xml; charset=utf-8"
     Cache-Control = "public, max-age=86400"
-
-[[headers]]
-  for = "/*.exe"
-  [headers.values]
-    Content-Type = "application/vnd.microsoft.portable-executable"
-    Content-Disposition = "attachment; filename=\"StopC_1.2.0_x64-setup.exe\""
-    Cache-Control = "public, max-age=604800"
-
-[[headers]]
-  for = "/*.exe"
-  [headers.values]
-    Content-Type = "application/vnd.microsoft.portable-executable"
-    Content-Disposition = "attachment; filename=\"StopC_1.2.0_x64-setup.exe\""
-    Cache-Control = "public, max-age=604800"

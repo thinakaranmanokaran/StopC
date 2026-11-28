@@ -53,7 +53,7 @@ export function HomePage() {
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
           <ActionButton
             href={SITE.links.installerDownload}
-            download={SITE.links.installerFileName}
+            download
             variant="primary"
             size="lg"
             className="w-full"

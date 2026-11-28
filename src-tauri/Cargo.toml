@@ -1,6 +1,6 @@
 [package]
 name = "stopc"
-version = "0.1.0"
+version = "1.0.0"
 description = "Copy Once. Trust Forever. — a clipboard confidence app."
 authors = ["Thinakaran Manokaran"]
 license = "MIT"

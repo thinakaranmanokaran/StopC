@@ -77,7 +77,7 @@ export default function AboutPage() {
       .then(setVersion)
       .catch((e) => {
         console.error("[stopc] failed to read app version:", e);
-        setVersion("1.0.2");
+        setVersion("1.0.0");
       });
   }, []);
 

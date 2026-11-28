@@ -12,3 +12,4 @@ src-tauri/gen/
 # Env / local
 .env
 .env.local
+release/
