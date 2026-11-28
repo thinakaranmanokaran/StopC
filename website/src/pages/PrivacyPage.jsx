@@ -41,7 +41,7 @@ export function PrivacyPage() {
             </h2>
 
             {section.paragraphs && (
-              <div className="mt-3 space-y-3 text-[16px] leading-[1.7] text-neutral-800">
+              <div className="mt-3 space-y-3 text-[16px] leading-[1.7] text-neutral-800 text-wrap break-words">
                 {section.paragraphs.map((text) => (
                   <p key={text}>{text}</p>
                 ))}
